@@ -3,7 +3,6 @@ pub enum RType {
     A = 1,       // IPv4 address
     NS = 2,      // Name Server
     CNAME = 5,   // Canonical Name
-    // TODO: Implement DNSRecord types for each of these rtypes
     MX = 15,     // Mail Exchange
     TXT = 16,    // Text Record
     AAAA = 28,   // IPv6 address
