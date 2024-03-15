@@ -44,6 +44,35 @@ impl DNSQuestion {
     pub fn new(qname: String, qtype: u16, qclass: u16) -> Self { DNSQuestion { qname, qtype, qclass }}
 }
 
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSQuestionSection {
+    questions: Vec<DNSQuestion>,
+}
+
+impl DNSQuestionSection {
+    // Constructor for creating a new DNSQuestionSection
+    pub fn new(questions:Vec<DNSQuestion>) -> Self { DNSQuestionSection { questions }}
+
+    // Method to add a question to the section
+    pub fn add_question(&mut self, question:DNSQuestion) { self.questions.push(question); }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSAnswerSection {
+    answers: Vec<DNSRecord>,
+}
+
+impl DNSAnswerSection {
+    // Constructor for creating a new DNSAnswerSection
+    pub fn new(answers:Vec<DNSRecord>) -> Self {
+        DNSAnswerSection { answers }
+    }
+
+    // Method to add an answer record to the section
+    pub fn add_answer(&mut self, answer:DNSRecord) { self.answers.push(answer); }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSAuthoritySection {
     records: Vec<DNSRecord>,
@@ -154,5 +183,33 @@ impl DNSNSRecord {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSMessage {
+    pub header: DNSHeader,
+    pub question: DNSQuestionSection,
+    pub answer: DNSAnswerSection,
+    pub authority: DNSAuthoritySection,
+    pub additional: DNSAdditionalSection
+}
+
+impl DNSMessage {
+    // Constructor for creating a new DNSMessage
+    pub fn new() -> Self {
+        DNSMessage {
+            header: DNSHeader::new(),
+            question: DNSQuestionSection::new(),
+            answer: DNSAnswerSection::new(),
+            authority: DNSAuthoritySection::new(),
+            additional: DNSAdditionalSection::new(),
+        }
+    }
+}
+
+
 fn main() {
+    // TODO: Write struct to represent binary DNS message
+    // TODO: Write method to deserialized binary DNS message
+    // TODO: Write method to serialize deserialzed messages
+    // TODO: Write UDP Networking logic
+    // TODO: Look into requirements for eDNS support
 }
