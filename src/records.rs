@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RType {
     A = 1,       // IPv4 address
     NS = 2,      // Name Server
@@ -6,8 +6,13 @@ pub enum RType {
     MX = 15,     // Mail Exchange
     TXT = 16,    // Text Record
     AAAA = 28,   // IPv6 address
+    SOA = 6,     // State of Authority
+    CAA = 257,   // Certification Authority Authorization
+    SRV = 33,    // Service Record
+    PTR = 12     // Pointer Record
 }
-#[derive(Debug, Clone, Copy, PartialEq,Eq)]
+
+#[derive(Debug, PartialEq,Eq)]
 pub enum RClass {
     IN = 1,    // Internet
     CH = 3,    // CHAOS
@@ -24,7 +29,6 @@ impl RClass {
         }
     }
 }
-
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DNSRecord {
@@ -92,7 +96,6 @@ impl DNSCNAMERecord {
     }
 }
 
-
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSNSRecord {
     pub preamble: DNSRecordPreamble, // The common preamble for DNS records
@@ -112,6 +115,135 @@ impl DNSNSRecord {
                 rdlength,
             },
             rdata: ns_domain,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSMXRecord {
+    pub preamble: DNSRecordPreamble,
+    pub preference: u16, // Preference value
+    pub exchange: String, // Mail exchange domain
+}
+
+impl DNSMXRecord {
+    pub fn new(name: String, ttl: u32, preference: u16, exchange: String) -> Self {
+        DNSMXRecord {
+            preamble: DNSRecordPreamble::new(name, RType::MX, RClass::IN, ttl, 0), // rdlength will be set later
+            preference,
+            exchange,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSTXTRecord {
+    pub preamble: DNSRecordPreamble,
+    pub text: String, // Text data
+}
+
+impl DNSTXTRecord {
+    pub fn new(name: String, ttl: u32, text: String) -> Self {
+        DNSTXTRecord {
+            preamble: DNSRecordPreamble::new(name, RType::TXT, RClass::IN, ttl, 0), // rdlength will be set later
+            text,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSAAAARecord {
+    pub preamble: DNSRecordPreamble,
+    pub address: std::net::Ipv6Addr, // IPv6 address
+}
+
+impl DNSAAAARecord {
+    pub fn new(name: String, ttl: u32, address: std::net::Ipv6Addr) -> Self {
+        DNSAAAARecord {
+            preamble: DNSRecordPreamble::new(name, RType::AAAA, RClass::IN, ttl, 16), // IPv6 addresses are 16 bytes
+            address,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSSOARecord {
+    pub preamble: DNSRecordPreamble,
+    pub mname: String, // Primary name server
+    pub rname: String, // Responsible authority's mailbox
+    pub serial: u32,   // Serial number
+    pub refresh: u32,  // Refresh interval
+    pub retry: u32,    // Retry interval
+    pub expire: u32,   // Expiration limit
+    pub minimum: u32,  // Minimum TTL
+}
+
+impl DNSSOARecord {
+    pub fn new(name: String, ttl: u32, mname: String, rname: String, serial: u32, refresh: u32, retry: u32, expire: u32, minimum: u32) -> Self {
+        DNSSOARecord {
+            preamble: DNSRecordPreamble::new(name, RType::SOA, RClass::IN, ttl, 0), // rdlength will be set later
+            mname,
+            rname,
+            serial,
+            refresh,
+            retry,
+            expire,
+            minimum,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSCAARecord {
+    pub preamble: DNSRecordPreamble,
+    pub flags: u8,    // Flags
+    pub tag: String,  // Tag
+    pub value: String, // Value
+}
+
+impl DNSCAARecord {
+    pub fn new(name: String, ttl: u32, flags: u8, tag: String, value: String) -> Self {
+        DNSCAARecord {
+            preamble: DNSRecordPreamble::new(name, RType::CAA, RClass::IN, ttl, 0), // rdlength will be set later
+            flags,
+            tag,
+            value,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSSRVRecord {
+    pub preamble: DNSRecordPreamble,
+    pub priority: u16, // Priority
+    pub weight: u16,   // Weight
+    pub port: u16,     // Port
+    pub target: String, // Target
+}
+
+impl DNSSRVRecord {
+    pub fn new(name: String, ttl: u32, priority: u16, weight: u16, port: u16, target: String) -> Self {
+        DNSSRVRecord {
+            preamble: DNSRecordPreamble::new(name, RType::SRV, RClass::IN, ttl, 0), // rdlength will be set later
+            priority,
+            weight,
+            port,
+            target,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSPTRRecord {
+    pub preamble: DNSRecordPreamble,
+    pub ptrdname: String, // The domain name which the PTR points to
+}
+
+impl DNSPTRRecord {
+    pub fn new(name: String, ttl: u32, ptrdname: String) -> Self {
+        DNSPTRRecord {
+            preamble: DNSRecordPreamble::new(name, RType::PTR, RClass::IN, ttl, 0), // rdlength will be set later
+            ptrdname,
         }
     }
 }
