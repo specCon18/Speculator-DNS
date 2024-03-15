@@ -1,3 +1,32 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RType {
+    A = 1,       // IPv4 address
+    NS = 2,      // Name Server
+    CNAME = 5,   // Canonical Name
+    // TODO: Implement DNSRecord types for each of these rtypes
+    MX = 15,     // Mail Exchange
+    TXT = 16,    // Text Record
+    AAAA = 28,   // IPv6 address
+}
+#[derive(Debug, Clone, Copy, PartialEq,Eq)]
+pub enum RClass {
+    IN = 1,    // Internet
+    CH = 3,    // CHAOS
+    HS = 4,    // Hesiod
+}
+
+impl RClass {
+    pub fn from_u16(value: u16) -> Option<RClass> {
+        match value {
+            1 => Some(RClass::IN),
+            3 => Some(RClass::CH),
+            4 => Some(RClass::HS),
+            _ => None,
+        }
+    }
+}
+
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum DNSRecord {
     A(DNSARecord),
@@ -8,15 +37,15 @@ pub enum DNSRecord {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSRecordPreamble {
     pub name: String, // The domain name the record pertains to
-    pub rtype: u16, // The type of the resource record
-    pub class: u16, // The class of the resource record
+    pub rtype: RType, // The type of the resource record
+    pub class: RClass, // The class of the resource record
     pub ttl: u32, // Time to live, in seconds
     pub rdlength: u16, // Length of the RDATA field
 }
 
 impl DNSRecordPreamble {
     // Constructor for creating a new DNSRecordPreamble
-    pub fn new(name: String, rtype: u16, class: u16, ttl: u32, rdlength: u16) -> Self { DNSRecordPreamble { name, rtype, class, ttl, rdlength }}
+    pub fn new(name: String, rtype: RType, class: RClass, ttl: u32, rdlength: u16) -> Self { DNSRecordPreamble { name, rtype, class, ttl, rdlength }}
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -31,8 +60,8 @@ impl DNSARecord {
         DNSARecord {
             preamble: DNSRecordPreamble {
                 name,
-                rtype: 1, // The type code for an A record is 1
-                class: 1, // The class for Internet is 1 (IN)
+                rtype: RType::A, // The type code for an A record is 1
+                class: RClass::IN, // The class for Internet is 1 (IN)
                 ttl,
                 rdlength: 4, // IPv4 addresses are 4 bytes in length
             },
@@ -54,8 +83,8 @@ impl DNSCNAMERecord {
         DNSCNAMERecord {
             preamble: DNSRecordPreamble {
                 name,
-                rtype: 5, // The type code for a CNAME record is 5
-                class: 1, // The class for Internet is 1 (IN)
+                rtype: RType::CNAME, // The type code for a CNAME record is 5
+                class: RClass::IN, // The class for Internet is 1 (IN)
                 ttl,
                 rdlength, // Set based on the length of the canonical name
             },
@@ -78,8 +107,8 @@ impl DNSNSRecord {
         DNSNSRecord {
             preamble: DNSRecordPreamble {
                 name,
-                rtype: 2, // The type code for an NS record is 2
-                class: 1, // The class for Internet is 1 (IN)
+                rtype: RType::NS, // The type code for an NS record is 2
+                class: RClass::IN, // The class for Internet is 1 (IN)
                 ttl,
                 rdlength,
             },

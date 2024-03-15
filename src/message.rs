@@ -1,6 +1,37 @@
 use super::records::DNSRecord;
 
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QType {
+    A = 1,       // IPv4 address
+    NS = 2,      // Name Server
+    CNAME = 5,   // Canonical Name
+    MX = 15,     // Mail Exchange
+    TXT = 16,    // Text Record
+    AAAA = 28,   // IPv6 address
+    // Additional query types as needed
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QClass {
+    IN = 1,    // Internet
+    CH = 3,    // CHAOS
+    HS = 4,    // Hesiod
+    ANY = 255, // Any class
+}
+
+impl QClass {
+    pub fn from_u16(value: u16) -> Option<QClass> {
+        match value {
+            1 => Some(QClass::IN),
+            3 => Some(QClass::CH),
+            4 => Some(QClass::HS),
+            255 => Some(QClass::ANY),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSHeaderSection {
     pub id: u16, // Identifier: a 16-bit ID
@@ -30,13 +61,13 @@ impl DNSHeaderSection {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSQuestion {
     pub qname: String, // The domain name being queried
-    pub qtype: u16, // The type of the query
-    pub qclass: u16, // The class of the query
+    pub qtype: QType, // The type of the query
+    pub qclass: QClass, // The class of the query
 }
 
 impl DNSQuestion {
     // Constructor for creating a new DNSQuestion
-    pub fn new(qname: String, qtype: u16, qclass: u16) -> Self { DNSQuestion { qname, qtype, qclass }}
+    pub fn new(qname: String, qtype: QType, qclass: QClass) -> Self { DNSQuestion { qname, qtype, qclass }}
 }
 
 
