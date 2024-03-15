@@ -9,7 +9,6 @@ pub enum QType {
     MX = 15,     // Mail Exchange
     TXT = 16,    // Text Record
     AAAA = 28,   // IPv6 address
-    // Additional query types as needed
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,11 +31,36 @@ impl QClass {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OpCode {
+    Query = 0,          // Standard query (QUERY)
+    IQuery = 1,         // Inverse query (IQUERY, deprecated)
+    Status = 2,         // Server status request (STATUS)
+    // 3 is unassigned
+    Notify = 4,         // Notify (NOTIFY, RFC 1996)
+    Update = 5,         // Dynamic update (UPDATE, RFC 2136)
+    // Codes 6-15 are reserved for future use
+}
+
+impl OpCode {
+    pub fn from_u8(value: u8) -> Option<OpCode> {
+        match value {
+            0 => Some(OpCode::Query),
+            1 => Some(OpCode::IQuery),
+            2 => Some(OpCode::Status),
+            4 => Some(OpCode::Notify),
+            5 => Some(OpCode::Update),
+            _ => None,
+        }
+    }
+}
+
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSHeaderSection {
     pub id: u16, // Identifier: a 16-bit ID
     pub qr: u8, // Query/Response Flag: 0 for query, 1 for response
-    pub opcode: u8, // Operation Code: Specifies the kind of query
+    pub opcode: OpCode, // Operation Code: Specifies the kind of query
     pub aa: u8, // Authoritative Answer: 0 or 1
     pub tc: u8, // Truncation: Specifies if the message was truncated
     pub rd: u8, // Recursion Desired: 0 or 1
@@ -53,7 +77,7 @@ pub struct DNSHeaderSection {
 
 impl DNSHeaderSection {
     // Constructor for creating a new DNSHeaderSection
-    pub fn new(id:u16,qr:u8,opcode:u8,aa:u8,tc:u8,rd:u8,ra:u8,z:u8,ad:u8,cd:u8,rcode:u8,qdcount:u16,ancount:u16,nscount:u16,arcount:u16) -> Self {
+    pub fn new(id:u16,qr:u8,opcode:OpCode,aa:u8,tc:u8,rd:u8,ra:u8,z:u8,ad:u8,cd:u8,rcode:u8,qdcount:u16,ancount:u16,nscount:u16,arcount:u16) -> Self {
         DNSHeaderSection { id, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, qdcount, ancount, nscount, arcount }
     }
 }
