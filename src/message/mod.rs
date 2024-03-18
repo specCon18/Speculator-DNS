@@ -1,12 +1,27 @@
 mod header;
 mod byte_packet_buffer;
 
-use crate::records::{DNSAAAARecord, DNSARecord, DNSCAARecord, DNSCNAMERecord, DNSMXRecord, DNSNSRecord, DNSPTRRecord, DNSSOARecord, DNSSRVRecord, DNSTXTRecord, DNSUNKNOWNRecord};
-
-use super::records::DNSRecord;
-use header::DNSHeaderSection;
 use byte_packet_buffer::BytePacketBuffer;
-use std::net::Ipv4Addr;
+use crate::records::{
+    DNSRecord,
+    DNSAAAARecord,
+    DNSARecord,
+    DNSCAARecord,
+    DNSCNAMERecord,
+    DNSMXRecord,
+    DNSNSRecord,
+    DNSPTRRecord,
+    DNSSOARecord,
+    DNSSRVRecord,
+    DNSTXTRecord,
+    DNSUNKNOWNRecord
+};
+use header::DNSHeaderSection;
+use std::net::{
+    Ipv4Addr,
+    Ipv6Addr
+};
+
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum QType {
@@ -166,11 +181,11 @@ impl DNSMessage {
         let mut domain = String::new();
         buffer.read_qname(&mut domain)?;
 
-        let qtype_num = buffer.read_u16()?;
-        let qtype = QType::from_num(qtype_num);
+        let qtype_num:u16 = buffer.read_u16()?;
+        let qtype: QType = QType::from_num(qtype_num);
         let _ = buffer.read_u16()?;
-        let ttl = buffer.read_u32()?;
-        let data_len = buffer.read_u16()?;
+        let ttl: u32 = buffer.read_u32()?;
+        let data_len:u16 = buffer.read_u16()?;
 
         match qtype {
             QType::A => {
@@ -186,28 +201,28 @@ impl DNSMessage {
             }
             QType::NS => {
                 //TODO: Needs to read the ns record
-                let ns_domain;
+                let ns_domain: String;
                 Ok(DNSRecord::NS(DNSNSRecord::new(domain, ttl, ns_domain)))
             }
             QType::CNAME => {
                 //TODO: Needs to read the canonical_name
-                let canonical_name;
+                let canonical_name: String;
                 Ok(DNSRecord::CNAME(DNSCNAMERecord::new(domain, ttl, canonical_name)))
             }
             QType::MX => {
                 //TODO: Needs to read the preference and exchange domain
-                let preference;
-                let exchange;
+                let preference: u16;
+                let exchange: String;
                 Ok(DNSRecord::MX(DNSMXRecord::new(domain, ttl, preference, exchange)))
             }
             QType::TXT => {
                 //TODO: Needs to read the text data
-                let text;
+                let text: String;
                 Ok(DNSRecord::TXT(DNSTXTRecord::new(domain, ttl, text)))
             }
             QType::AAAA => {
                 //TODO: Parse IPv6 Address
-                let address;
+                let address:Ipv6Addr;
                 Ok(DNSRecord::AAAA(DNSAAAARecord::new(domain, ttl, address)))
             }
             QType::SOA => {
