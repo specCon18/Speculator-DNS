@@ -1,3 +1,5 @@
+use super::byte_packet_buffer::BytePacketBuffer;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum OpCode {
     Query = 0,          // Standard query (QUERY)
@@ -206,5 +208,40 @@ impl DNSHeaderSection {
     // Constructor for creating a new DNSHeaderSection
     pub fn new(id:u16,qr:QRFlag,opcode:OpCode,aa:AAFlag,tc:TCFlag,rd:RDFlag,ra:RAFlag,z:ZFlag,ad:ADFlag,cd:CDFlag,rcode:RCode,qdcount:u16,ancount:u16,nscount:u16,arcount:u16) -> Self {
         DNSHeaderSection { id, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, qdcount, ancount, nscount, arcount }
+    }
+    pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
+        self.id = buffer.read_u16()?;
+
+        let flags = buffer.read_u16()?;
+        let a = (flags >> 8) as u8;
+        let b = (flags & 0xFF) as u8;
+
+        // Convert boolean to u8, then use from_u8 for enum conversion
+        self.rd = RDFlag::from_u8(((a & (1 << 0)) > 0) as u8).unwrap();
+        self.tc = TCFlag::from_u8(((a & (1 << 1)) > 0) as u8).unwrap();
+        self.aa = AAFlag::from_u8(((a & (1 << 2)) > 0) as u8).unwrap();
+
+        // Directly extract the value for opcode, mask with 0x0F to get the correct value, then convert
+        self.opcode = OpCode::from_u8((a >> 3) & 0x0F).unwrap();
+
+        // Convert boolean to u8, then use from_u8 for enum conversion
+        self.qr = QRFlag::from_u8(((a & (1 << 7)) > 0) as u8).unwrap();
+
+        // Directly extract the value for rcode, mask with 0x0F to get the correct value, then convert
+        self.rcode = RCode::from_u8(b & 0x0F).unwrap();
+
+        // Convert boolean to u8, then use from_u8 for enum conversion for remaining flags
+        self.cd = CDFlag::from_u8(((b & (1 << 4)) > 0) as u8).unwrap();
+        self.ad = ADFlag::from_u8(((b & (1 << 5)) > 0) as u8).unwrap();
+        self.z = ZFlag::from_u8(((b & (1 << 6)) > 0) as u8).unwrap();
+        self.ra = RAFlag::from_u8(((b & (1 << 7)) > 0) as u8).unwrap();
+
+        // Continue with buffer reading for counts
+        self.qdcount = buffer.read_u16()?;
+        self.ancount = buffer.read_u16()?;
+        self.nscount = buffer.read_u16()?;
+        self.arcount = buffer.read_u16()?;
+
+        Ok(())
     }
 }

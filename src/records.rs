@@ -1,15 +1,50 @@
 #[derive(Debug, PartialEq, Eq)]
 pub enum RType {
-    A = 1,       // IPv4 address
-    NS = 2,      // Name Server
-    CNAME = 5,   // Canonical Name
-    MX = 15,     // Mail Exchange
-    TXT = 16,    // Text Record
-    AAAA = 28,   // IPv6 address
-    SOA = 6,     // State of Authority
-    CAA = 257,   // Certification Authority Authorization
-    SRV = 33,    // Service Record
-    PTR = 12     // Pointer Record
+    UNKNOWN(u16),
+    A,       // IPv4 address
+    NS,      // Name Server
+    CNAME,   // Canonical Name
+    MX,     // Mail Exchange
+    TXT,    // Text Record
+    AAAA,   // IPv6 address
+    SOA,     // State of Authority
+    CAA,   // Certification Authority Authorization
+    SRV,    // Service Record
+    PTR,    // Pointer Record
+}
+
+impl RType {
+    pub fn to_num(&self) -> u16 {
+        match *self {
+            RType::A => 1,       
+            RType::NS => 2,      
+            RType::CNAME => 5,   
+            RType::SOA => 6,     
+            RType::PTR => 12,    
+            RType::MX => 15,     
+            RType::TXT => 16,    
+            RType::AAAA => 28,   
+            RType::SRV => 33,    
+            RType::CAA => 257,
+            RType::UNKNOWN(x) => x
+        }
+    }
+
+    pub fn from_num(num: u16) -> RType {
+        match num {
+            1 => RType::A,       
+            2 => RType::NS,      
+            5 => RType::CNAME,   
+            6 => RType::SOA,     
+            12 => RType::PTR,    
+            15 => RType::MX,     
+            16 => RType::TXT,    
+            28 => RType::AAAA,   
+            33 => RType::SRV,    
+            257 => RType::CAA,
+            _ => RType::UNKNOWN(num)
+        }
+    }
 }
 
 #[derive(Debug, PartialEq,Eq)]
@@ -35,6 +70,14 @@ pub enum DNSRecord {
     A(DNSARecord),
     CNAME(DNSCNAMERecord),
     NS(DNSNSRecord),
+    MX(DNSMXRecord),
+    TXT(DNSTXTRecord),
+    AAAA(DNSAAAARecord),
+    SOA(DNSSOARecord),
+    CAA(DNSCAARecord),
+    SRV(DNSSRVRecord),
+    PTR(DNSPTRRecord),
+    UNKNOWN(DNSUNKNOWNRecord)
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -69,6 +112,26 @@ impl DNSARecord {
                 rdlength: 4, // IPv4 addresses are 4 bytes in length
             },
             rdata: ipv4_address,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DNSUNKNOWNRecord {
+    pub preamble: DNSRecordPreamble,
+}
+
+impl DNSUNKNOWNRecord {
+    // Constructor for creating a new DNSARecord
+    pub fn new(name: String, ttl: u32) -> Self {
+        DNSUNKNOWNRecord {
+            preamble: DNSRecordPreamble {
+                name,
+                rtype: RType::UNKNOWN(0), // The type code for an A record is 1
+                class: RClass::IN, // The class for Internet is 1 (IN)
+                ttl,
+                rdlength: 4, // IPv4 addresses are 4 bytes in length
+            },
         }
     }
 }
