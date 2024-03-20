@@ -1,28 +1,8 @@
-use crate::message::{QRType,byte_packet_buffer::BytePacketBuffer};
+use crate::message::{QRType,QRClass,byte_packet_buffer::BytePacketBuffer};
 use std::net::{
     Ipv4Addr,
     Ipv6Addr
 };
-
-#[derive(Debug, PartialEq,Eq)]
-pub enum QRClass {
-    IN = 1,    // Internet
-    CH = 3,    // CHAOS
-    HS = 4,    // Hesiod
-    ANY = 255, // Any class
-}
-
-impl QRClass {
-    pub fn from_u16(value: u16) -> Option<QRClass> {
-        match value {
-            1 => Some(QRClass::IN),
-            3 => Some(QRClass::CH),
-            4 => Some(QRClass::HS),
-            255 => Some(QRClass::ANY),
-            _ => None,
-        }
-    }
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DNSRecord {
@@ -86,10 +66,11 @@ impl DNSRecord {
                 Ok(DNSRecord::MX(DNSMXRecord::new(domain, class, ttl, preference, exchange)))
             }
             QRType::TXT => {
-                let i:u16 = 0;
+                let mut i:u16 = 0;
                 let mut text: String = String::new();
                 while i <= data_len {                    
-                    text.push(buffer.read_byte()? as char)
+                    text.push(buffer.read_u8()? as char);
+                    i += 1;
                 }
                 Ok(DNSRecord::TXT(DNSTXTRecord::new(domain, class, ttl, text)))
             }
@@ -120,18 +101,20 @@ impl DNSRecord {
                 Ok(DNSRecord::SOA(DNSSOARecord::new(domain, class, ttl, mname, rname, serial, refresh, retry, expire, minimum)))
             }
             QRType::CAA => {
-                let flags: u8 = buffer.read_byte()?;
-                let tag_len: u8 = buffer.read_byte()?;
+                let flags: u8 = buffer.read_u8()?;
+                let tag_len: u8 = buffer.read_u8()?;
                 let mut i:u16 = 0;
                 let mut tag: String = String::new();
                 while i as u8 <= tag_len {                    
-                    tag.push(buffer.read_byte()? as char)
+                    tag.push(buffer.read_u8()? as char);
+                    i += 1;
                 }
                 i = 0;
                 let value_len = data_len - tag_len as u16;
                 let value: String = String::new();
                 while i <= value_len {                    
-                    tag.push(buffer.read_byte()? as char)
+                    tag.push(buffer.read_u8()? as char);
+                    i += 1;
                 }
                 Ok(DNSRecord::CAA(DNSCAARecord::new(domain, class, ttl, flags, tag, value)))
             }

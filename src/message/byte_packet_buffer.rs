@@ -31,17 +31,25 @@ impl BytePacketBuffer {
 
         Ok(())
     }
-
-
-
-    /// Read a single byte and move the position one step forward
-    pub fn read_byte(&mut self) -> Result<u8,std::io::Error> {
+    
+    // Read the current position and step forward once
+    fn read(&mut self) -> Result<u8,std::io::Error>{
         if self.pos >= 512 {
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
         }
         let res = self.buf[self.pos];
         self.pos += 1;
 
+        Ok(res)
+    }
+    
+    /// Read a single byte and move the position one step forward
+    pub fn read_u8(&mut self) -> Result<u8,std::io::Error> {
+        if self.pos >= 512 {
+            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
+        }
+        let res = self.buf[self.pos];
+        self.pos += 1;
         Ok(res)
     }
     
@@ -63,42 +71,41 @@ impl BytePacketBuffer {
 
     /// Read two bytes, stepping two steps forward
     pub fn read_u16(&mut self) -> Result<u16,std::io::Error> {
-        let res = ((self.read_byte()? as u16) << 8) | (self.read_byte()? as u16);
+        let res = ((self.read()? as u16) << 8) | (self.read()? as u16);
 
         Ok(res)
     }
 
     /// Read four bytes, stepping four steps forward
     pub fn read_u32(&mut self) -> Result<u32,std::io::Error> {
-        let res = ((self.read_byte()? as u32) << 24)
-            | ((self.read_byte()? as u32) << 16)
-            | ((self.read_byte()? as u32) << 8)
-            | ((self.read_byte()? as u32) << 0);
+        let res = ((self.read()? as u32) << 24)
+            | ((self.read()? as u32) << 16)
+            | ((self.read()? as u32) << 8)
+            | ((self.read()? as u32) << 0);
 
         Ok(res)
     }
     /// Read sixteen bytes, stepping sixteen steps forward
     pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
-        let res = ((self.read_byte()? as u128) << 120)
-            | ((self.read_byte()? as u128) << 112)
-            | ((self.read_byte()? as u128) << 104)
-            | ((self.read_byte()? as u128) << 96)
-            | ((self.read_byte()? as u128) << 88)
-            | ((self.read_byte()? as u128) << 80)
-            | ((self.read_byte()? as u128) << 72)
-            | ((self.read_byte()? as u128) << 64)
-            | ((self.read_byte()? as u128) << 56)
-            | ((self.read_byte()? as u128) << 48)
-            | ((self.read_byte()? as u128) << 40)
-            | ((self.read_byte()? as u128) << 32)
-            | ((self.read_byte()? as u128) << 24)
-            | ((self.read_byte()? as u128) << 16)
-            | ((self.read_byte()? as u128) << 8)
-            | ((self.read_byte()? as u128) << 0);
+        let res = ((self.read()? as u128) << 120)
+            | ((self.read()? as u128) << 112)
+            | ((self.read()? as u128) << 104)
+            | ((self.read()? as u128) << 96)
+            | ((self.read()? as u128) << 88)
+            | ((self.read()? as u128) << 80)
+            | ((self.read()? as u128) << 72)
+            | ((self.read()? as u128) << 64)
+            | ((self.read()? as u128) << 56)
+            | ((self.read()? as u128) << 48)
+            | ((self.read()? as u128) << 40)
+            | ((self.read()? as u128) << 32)
+            | ((self.read()? as u128) << 24)
+            | ((self.read()? as u128) << 16)
+            | ((self.read()? as u128) << 8)
+            | ((self.read()? as u128) << 0);
     
         Ok(res)
     }
-    
 
     /// Read a qname
     ///
@@ -185,6 +192,85 @@ impl BytePacketBuffer {
         if !jumped {
             self.seek(pos)?;
         }
+
+        Ok(())
+    }
+
+    /// Write a single byte and move the position one step forward
+    fn write(&mut self, val: u8) -> Result<(),std::io::Error> {
+        if self.pos >= 512 {
+            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
+        }
+        self.buf[self.pos] = val;
+        self.pos += 1;
+        Ok(())
+    }
+
+    /// Write a single byte and move the position one step forward
+    pub fn write_u8(&mut self, val: u8) -> Result<(),std::io::Error> {
+        self.write(val)?;
+
+        Ok(())
+    }
+
+    /// Write two bytes and move the position two step forward
+    pub fn write_u16(&mut self, val: u16) -> Result<(),std::io::Error> {
+        self.write((val >> 8) as u8)?;
+        self.write((val & 0xFF) as u8)?;
+
+        Ok(())
+    }
+
+    /// Write two bytes and move the position two step forward
+    pub fn write_u32(&mut self, val: u32) -> Result<(),std::io::Error> {
+        self.write(((val >> 24) & 0xFF) as u8)?;
+        self.write(((val >> 16) & 0xFF) as u8)?;
+        self.write(((val >> 8) & 0xFF) as u8)?;
+        self.write((val & 0xFF) as u8)?;
+        Ok(())
+    }
+
+    /// Write sixteen bytes and move the position sixteen steps forward
+    pub fn write_u128(&mut self, val: u128) -> Result<(), std::io::Error> {
+        self.write(((val >> 120) & 0xFF) as u8)?;
+        self.write(((val >> 112) & 0xFF) as u8)?;
+        self.write(((val >> 104) & 0xFF) as u8)?;
+        self.write(((val >> 96) & 0xFF) as u8)?;
+        self.write(((val >> 88) & 0xFF) as u8)?;
+        self.write(((val >> 80) & 0xFF) as u8)?;
+        self.write(((val >> 72) & 0xFF) as u8)?;
+        self.write(((val >> 64) & 0xFF) as u8)?;
+        self.write(((val >> 56) & 0xFF) as u8)?;
+        self.write(((val >> 48) & 0xFF) as u8)?;
+        self.write(((val >> 40) & 0xFF) as u8)?;
+        self.write(((val >> 32) & 0xFF) as u8)?;
+        self.write(((val >> 24) & 0xFF) as u8)?;
+        self.write(((val >> 16) & 0xFF) as u8)?;
+        self.write(((val >> 8) & 0xFF) as u8)?;
+        self.write((val & 0xFF) as u8)?;
+
+        Ok(())
+    }
+
+    /// Write a qname
+    ///
+    /// The tricky part: Reading domain names, taking labels into consideration.
+    /// Will take something like www.google.com and append
+    /// [3]www[6]google[3]com[0] to outstr.
+    pub fn write_qname(&mut self, qname: &str) -> Result<(),std::io::Error> {
+        for label in qname.split('.') {
+            let len = label.len();
+            if len > 0x3f {
+                return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Single label exceeds 63 characters of length"));
+            }
+
+            self.write_u8(len as u8)?;
+            for b in label.as_bytes() {
+                self.write_u8(*b)?;
+            }
+        }
+
+        self.write_u8(0)?;
 
         Ok(())
     }

@@ -1,6 +1,6 @@
 use super::byte_packet_buffer::BytePacketBuffer;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpCode {
     Query,          // Standard query (QUERY)
     IQuery,         // Inverse query (IQUERY, deprecated)
@@ -21,9 +21,19 @@ impl OpCode {
             _ => None,
         }
     }
+    pub fn to_u8(value:&OpCode) -> u8 {
+        match value {
+            OpCode::Query => 0,
+            OpCode::IQuery => 1,
+            OpCode::Status => 2,
+            OpCode::Notify => 4,
+            OpCode::Update => 5,
+            _ => 255,
+        }
+    }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QRFlag {
     Query,
     Response
@@ -39,7 +49,7 @@ impl QRFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AAFlag {
     NonAuthoritative,
     Authoritative
@@ -55,7 +65,7 @@ impl AAFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TCFlag {
     NonTruncated,
     Truncated
@@ -71,7 +81,7 @@ impl TCFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RDFlag {
     NonDesired,
     Desired
@@ -87,7 +97,7 @@ impl RDFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RAFlag {
     NonAvailable,
     Available
@@ -103,7 +113,7 @@ impl RAFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ZFlag {
     Unused,
 }
@@ -117,7 +127,7 @@ impl ZFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ADFlag {
     NonAuthenticated,
     Authenticated
@@ -133,7 +143,7 @@ impl ADFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CDFlag {
     Enabled,
     Disabled
@@ -149,7 +159,7 @@ impl CDFlag {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RCode {
     NoError,     // No error condition
     FormErr,     // Format error - The name server was unable to interpret the query.
@@ -185,7 +195,7 @@ impl RCode {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DNSHeaderSection {
     pub id: u16, // Identifier: a 16-bit ID
     pub qr: QRFlag, // Query/Response Flag: 0 for query, 1 for response
@@ -256,6 +266,31 @@ impl DNSHeaderSection {
         self.ancount = buffer.read_u16()?;
         self.nscount = buffer.read_u16()?;
         self.arcount = buffer.read_u16()?;
+
+        Ok(())
+    }
+    pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
+        buffer.write_u16(self.id)?;
+        buffer.write_u8(
+            (self.rd as u8)
+                | ((self.tc as u8) << 1)
+                | ((self.aa as u8) << 2)
+                | (OpCode::to_u8(&self.opcode) << 3)
+                | ((self.qr as u8) << 7) as u8,
+        )?;
+
+        buffer.write_u8(
+            (self.rcode as u8)
+                | ((self.cd as u8) << 4)
+                | ((self.ad as u8) << 5)
+                | ((self.z as u8) << 6)
+                | ((self.ra as u8) << 7),
+        )?;
+
+        buffer.write_u16(self.qdcount)?;
+        buffer.write_u16(self.ancount)?;
+        buffer.write_u16(self.nscount)?;
+        buffer.write_u16(self.arcount)?;
 
         Ok(())
     }

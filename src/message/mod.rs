@@ -3,7 +3,7 @@ mod records;
 pub(crate) mod byte_packet_buffer;
 
 use byte_packet_buffer::BytePacketBuffer;
-use records::{DNSRecord,QRClass};
+use records::DNSRecord;
 use header::DNSHeaderSection;
 
 
@@ -57,6 +57,35 @@ impl QRType {
     }
 }
 
+#[derive(Debug, PartialEq,Eq)]
+pub enum QRClass {
+    IN,    // Internet
+    CH,    // CHAOS
+    HS,    // Hesiod
+    ANY, // Any class
+}
+
+impl QRClass {
+    pub fn from_u16(value: u16) -> Option<QRClass> {
+        match value {
+            1 => Some(QRClass::IN),
+            3 => Some(QRClass::CH),
+            4 => Some(QRClass::HS),
+            255 => Some(QRClass::ANY),
+            _ => None,
+        }
+    }
+    pub fn to_u16(value: QRClass) -> u16 {
+        match value {
+            QRClass::IN => 1,
+            QRClass::CH => 3,
+            QRClass::HS => 4,
+            QRClass::ANY => 255,
+            _ => 255,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSQuestion {
     pub qname: String, // The domain name being queried
@@ -76,6 +105,15 @@ impl DNSQuestion {
         buffer.read_qname(&mut self.qname)?;
         self.qtype = QRType::from_u16(buffer.read_u16()?); // qtype
         let _ = buffer.read_u16()?; // class
+
+        Ok(())
+    }
+    pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
+        buffer.write_qname(&self.qname)?;
+
+        let typenum = self.qtype.to_u16();
+        buffer.write_u16(typenum)?;
+        buffer.write_u16(1)?;
 
         Ok(())
     }
