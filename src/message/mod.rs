@@ -242,29 +242,30 @@ impl DNSMessage {
                 Ok(DNSRecord::AAAA(DNSAAAARecord::new(domain, ttl, address)))
             }
             QType::SOA => {
-                //TODO: Parse Data from message
-                let mname: String; // Primary name server
-                let rname: String; // Responsible authority's mailbox
-                let serial: u32;   // Serial number
-                let refresh: u32;  // Refresh interval
-                let retry: u32;    // Retry interval
-                let expire: u32;   // Expiration limit
-                let minimum: u32;  // Minimum TTL
+                let mut mname: String = String::new(); // Primary name server
+                buffer.read_qname(&mut mname);
+                let mut rname: String = String::new(); // Responsible authority's mailbox
+                buffer.read_qname(&mut rname);
+                let serial: u32 = buffer.read_u32()?;   // Serial number
+                let refresh: u32 = buffer.read_u32()?;  // Refresh interval
+                let retry: u32 = buffer.read_u32()?;    // Retry interval
+                let expire: u32 = buffer.read_u32()?;   // Expiration limit
+                let minimum: u32 = buffer.read_u32()?;  // Minimum TTL
                 Ok(DNSRecord::SOA(DNSSOARecord::new(domain, ttl, mname, rname, serial, refresh, retry, expire, minimum)))
             }
             QType::CAA => {
-                //TODO: Parse Data from message
-                let flags: u8;
+                //TODO: sort out how long tag and value are and parse them
+                let flags: u8 = buffer.read_byte()?;
                 let tag: String;
                 let value: String;
                 Ok(DNSRecord::CAA(DNSCAARecord::new(domain, ttl, flags, tag, value)))
             }
             QType::SRV => {
-                //TODO: Parse Data from message
-                let priority: u16;
-                let weight: u16;
-                let port: u16;
-                let target: String;
+                let priority: u16 = buffer.read_u16()?;
+                let weight: u16 = buffer.read_u16()?;
+                let port: u16 = buffer.read_u16()?;
+                let mut target: String = String::new();
+                buffer.read_qname(&mut target)?;
                 Ok(DNSRecord::SRV(DNSSRVRecord::new(domain, ttl, priority, weight, port, target)))
             }
             QType::PTR => {
