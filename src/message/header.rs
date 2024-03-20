@@ -28,7 +28,6 @@ impl OpCode {
             OpCode::Status => 2,
             OpCode::Notify => 4,
             OpCode::Update => 5,
-            _ => 255,
         }
     }
 }

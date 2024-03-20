@@ -81,7 +81,6 @@ impl QRClass {
             QRClass::CH => 3,
             QRClass::HS => 4,
             QRClass::ANY => 255,
-            _ => 255,
         }
     }
 }
