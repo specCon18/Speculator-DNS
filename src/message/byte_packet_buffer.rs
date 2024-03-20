@@ -26,7 +26,7 @@ impl BytePacketBuffer {
     }
 
     /// Change the buffer position
-    fn seek(&mut self, pos: usize) -> Result<(),std::io::Error> {
+    pub fn seek(&mut self, pos: usize) -> Result<(),std::io::Error> {
         self.pos = pos;
 
         Ok(())

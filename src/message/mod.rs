@@ -1,4 +1,4 @@
-mod header;
+pub(crate) mod header;
 mod records;
 pub(crate) mod byte_packet_buffer;
 
@@ -75,7 +75,7 @@ impl QRClass {
             _ => None,
         }
     }
-    pub fn to_u16(value: QRClass) -> u16 {
+    pub fn to_u16(value: &QRClass) -> u16 {
         match value {
             QRClass::IN => 1,
             QRClass::CH => 3,
@@ -219,5 +219,28 @@ impl DNSPacket {
         }
 
         Ok(result)
+    }
+    pub fn write(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
+        self.header.qdcount = self.question.questions.len() as u16;
+        self.header.ancount = self.answer.answers.len() as u16;
+        self.header.nscount = self.authority.records.len() as u16;
+        self.header.arcount = self.additional.records.len() as u16;
+
+        self.header.write(buffer)?;
+
+        for question in &self.question.questions {
+            question.write(buffer)?;
+        }
+        for rec in &self.answer.answers {
+            rec.write(buffer)?;
+        }
+        for rec in &self.authority.records {
+            rec.write(buffer)?;
+        }
+        for rec in &self.additional.records {
+            rec.write(buffer)?;
+        }
+
+        Ok(())
     }
 }

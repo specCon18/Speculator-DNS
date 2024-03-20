@@ -137,6 +137,158 @@ impl DNSRecord {
             }
         }
     }
+    pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
+        match self {
+            DNSRecord::A(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                buffer.write_u16(record.preamble.rdlength)?;
+                
+                // Write the IPv4 address
+                let octets = record.rdata.octets();
+                for octet in octets.iter() {
+                    buffer.write_u8(*octet)?;
+                }
+            },
+            DNSRecord::CNAME(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                // Placeholder position for length
+                let len_pos = buffer.pos();
+                buffer.write_u16(0)?; // Placeholder for length
+
+                let start_pos = buffer.pos();
+                buffer.write_qname(&record.rdata)?;
+                let end_pos = buffer.pos();
+                let rdlength = end_pos - start_pos;
+                buffer.seek(len_pos)?;
+                buffer.write_u16(rdlength as u16)?;
+                buffer.seek(end_pos)?;
+            },
+            DNSRecord::MX(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                let len_pos = buffer.pos();
+                buffer.write_u16(0)?; // Placeholder for length
+
+                let start_pos = buffer.pos();
+                buffer.write_u16(record.preference)?;
+                buffer.write_qname(&record.exchange)?;
+                let end_pos = buffer.pos();
+                let rdlength = end_pos - start_pos;
+                buffer.seek(len_pos)?;
+                buffer.write_u16(rdlength as u16)?;
+                buffer.seek(end_pos)?;
+            },
+            DNSRecord::TXT(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                let text_bytes = record.text.as_bytes();
+                buffer.write_u16(text_bytes.len() as u16)?;
+                for byte in text_bytes {
+                    buffer.write_u8(*byte)?;
+                }
+            },
+            DNSRecord::AAAA(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                buffer.write_u16(16)?; // IPv6 address is always 16 bytes
+
+                for segment in &record.address.segments() {
+                    buffer.write_u16(*segment)?;
+                }
+            },
+            DNSRecord::SOA(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                let len_pos = buffer.pos();
+                buffer.write_u16(0)?; // Placeholder for length
+
+                let start_pos = buffer.pos();
+                buffer.write_qname(&record.mname)?;
+                buffer.write_qname(&record.rname)?;
+                buffer.write_u32(record.serial)?;
+                buffer.write_u32(record.refresh)?;
+                buffer.write_u32(record.retry)?;
+                buffer.write_u32(record.expire)?;
+                buffer.write_u32(record.minimum)?;
+                let end_pos = buffer.pos();
+                let rdlength = end_pos - start_pos;
+                buffer.seek(len_pos)?;
+                buffer.write_u16(rdlength as u16)?;
+                buffer.seek(end_pos)?;
+            },
+            DNSRecord::SRV(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                let len_pos = buffer.pos();
+                buffer.write_u16(0)?; // Placeholder for length
+
+                let start_pos = buffer.pos();
+                buffer.write_u16(record.priority)?;
+                buffer.write_u16(record.weight)?;
+                buffer.write_u16(record.port)?;
+                buffer.write_qname(&record.target)?;
+                let end_pos = buffer.pos();
+                let rdlength = end_pos - start_pos;
+                buffer.seek(len_pos)?;
+                buffer.write_u16(rdlength as u16)?;
+                buffer.seek(end_pos)?;
+            },
+            DNSRecord::CAA(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                // Calculate the length of the CAA record data.
+                // Flags (1 byte) + Tag length (1 byte) + Tag + Value
+                let data_len = 1 + 1 + record.tag.len() + record.value.len();
+                buffer.write_u16(data_len as u16)?;
+                        
+                buffer.write_u8(record.flags)?;
+                buffer.write_u8(record.tag.len() as u8)?;
+                for byte in record.tag.as_bytes() {
+                    buffer.write_u8(*byte)?;
+                }
+                for byte in record.value.as_bytes() {
+                    buffer.write_u8(*byte)?;
+                }
+            },
+            DNSRecord::PTR(record) => {
+                buffer.write_qname(&record.preamble.name)?;
+                buffer.write_u16(record.preamble.rtype.to_u16())?;
+                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
+                buffer.write_u32(record.preamble.ttl)?;
+                let len_pos = buffer.pos();
+                buffer.write_u16(0)?; // Placeholder for length
+
+                let start_pos = buffer.pos();
+                buffer.write_qname(&record.ptrdname)?;
+                let end_pos = buffer.pos();
+                let rdlength = end_pos - start_pos;
+                buffer.seek(len_pos)?;
+                buffer.write_u16(rdlength as u16)?;
+                buffer.seek(end_pos)?;
+            },
+            // Handle other record types similarly...
+            _ => return Err(std::io::Error::new(std::io::ErrorKind::Other, "Unsupported record type")),
+        }
+        Ok(())
+    }
 }
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSRecordPreamble {
