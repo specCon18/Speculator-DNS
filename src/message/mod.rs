@@ -220,8 +220,11 @@ impl DNSMessage {
                 Ok(DNSRecord::MX(DNSMXRecord::new(domain, ttl, preference, exchange)))
             }
             QType::TXT => {
-                //TODO: Needs to read the text data
-                let text: String;
+                let i:u16 = 0;
+                let mut text: String = String::new();
+                while i <= data_len {                    
+                    text.push(buffer.read_byte()? as char)
+                }
                 Ok(DNSRecord::TXT(DNSTXTRecord::new(domain, ttl, text)))
             }
             QType::AAAA => {
@@ -265,8 +268,8 @@ impl DNSMessage {
                 Ok(DNSRecord::SRV(DNSSRVRecord::new(domain, ttl, priority, weight, port, target)))
             }
             QType::PTR => {
-                //TODO: Parse Data from message
-                let ptrdname: String;
+                let mut ptrdname: String = String::new();
+                buffer.read_qname(&mut ptrdname)?;
                 Ok(DNSRecord::PTR(DNSPTRRecord::new(domain, ttl, ptrdname)))
             }
             QType::UNKNOWN(_) => {

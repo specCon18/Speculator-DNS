@@ -32,16 +32,7 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    /// Read a single byte and move the position one step forward
-    pub fn read(&mut self) -> Result<u8,std::io::Error> {
-        if self.pos >= 512 {
-            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
-        }
-        let res = self.buf[self.pos];
-        self.pos += 1;
 
-        Ok(res)
-    }
 
     /// Read a single byte and move the position one step forward
     pub fn read_byte(&mut self) -> Result<u8,std::io::Error> {
@@ -72,38 +63,38 @@ impl BytePacketBuffer {
 
     /// Read two bytes, stepping two steps forward
     pub fn read_u16(&mut self) -> Result<u16,std::io::Error> {
-        let res = ((self.read()? as u16) << 8) | (self.read()? as u16);
+        let res = ((self.read_byte()? as u16) << 8) | (self.read_byte()? as u16);
 
         Ok(res)
     }
 
     /// Read four bytes, stepping four steps forward
     pub fn read_u32(&mut self) -> Result<u32,std::io::Error> {
-        let res = ((self.read()? as u32) << 24)
-            | ((self.read()? as u32) << 16)
-            | ((self.read()? as u32) << 8)
-            | ((self.read()? as u32) << 0);
+        let res = ((self.read_byte()? as u32) << 24)
+            | ((self.read_byte()? as u32) << 16)
+            | ((self.read_byte()? as u32) << 8)
+            | ((self.read_byte()? as u32) << 0);
 
         Ok(res)
     }
 
     pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
-        let res = ((self.read()? as u128) << 120)
-            | ((self.read()? as u128) << 112)
-            | ((self.read()? as u128) << 104)
-            | ((self.read()? as u128) << 96)
-            | ((self.read()? as u128) << 88)
-            | ((self.read()? as u128) << 80)
-            | ((self.read()? as u128) << 72)
-            | ((self.read()? as u128) << 64)
-            | ((self.read()? as u128) << 56)
-            | ((self.read()? as u128) << 48)
-            | ((self.read()? as u128) << 40)
-            | ((self.read()? as u128) << 32)
-            | ((self.read()? as u128) << 24)
-            | ((self.read()? as u128) << 16)
-            | ((self.read()? as u128) << 8)
-            | ((self.read()? as u128) << 0);
+        let res = ((self.read_byte()? as u128) << 120)
+            | ((self.read_byte()? as u128) << 112)
+            | ((self.read_byte()? as u128) << 104)
+            | ((self.read_byte()? as u128) << 96)
+            | ((self.read_byte()? as u128) << 88)
+            | ((self.read_byte()? as u128) << 80)
+            | ((self.read_byte()? as u128) << 72)
+            | ((self.read_byte()? as u128) << 64)
+            | ((self.read_byte()? as u128) << 56)
+            | ((self.read_byte()? as u128) << 48)
+            | ((self.read_byte()? as u128) << 40)
+            | ((self.read_byte()? as u128) << 32)
+            | ((self.read_byte()? as u128) << 24)
+            | ((self.read_byte()? as u128) << 16)
+            | ((self.read_byte()? as u128) << 8)
+            | ((self.read_byte()? as u128) << 0);
     
         Ok(res)
     }
