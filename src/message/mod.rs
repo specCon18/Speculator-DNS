@@ -8,7 +8,7 @@ use header::DNSHeaderSection;
 
 
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QRType {
     UNKNOWN(u16),
     A,       // IPv4 address
@@ -57,7 +57,7 @@ impl QRType {
     }
 }
 
-#[derive(Debug, PartialEq,Eq)]
+#[derive(Debug, Clone, Copy, PartialEq,Eq)]
 pub enum QRClass {
     IN,    // Internet
     CH,    // CHAOS
