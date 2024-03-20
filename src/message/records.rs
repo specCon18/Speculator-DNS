@@ -203,10 +203,7 @@ impl DNSRecord {
                 buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
                 buffer.write_u32(record.preamble.ttl)?;
                 buffer.write_u16(16)?; // IPv6 address is always 16 bytes
-
-                for segment in &record.address.segments() {
-                    buffer.write_u16(*segment)?;
-                }
+                buffer.write_u128(record.address.into())?;
             },
             DNSRecord::SOA(record) => {
                 buffer.write_qname(&record.preamble.name)?;
