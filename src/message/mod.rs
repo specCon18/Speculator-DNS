@@ -1,14 +1,15 @@
 mod header;
+mod records;
 pub(crate) mod byte_packet_buffer;
 
 use byte_packet_buffer::BytePacketBuffer;
-use crate::records::DNSRecord;
+use records::{DNSRecord,QRClass};
 use header::DNSHeaderSection;
 
 
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum QType {
+pub enum QRType {
     UNKNOWN(u16),
     A,       // IPv4 address
     NS,      // Name Server
@@ -22,56 +23,36 @@ pub enum QType {
     CAA,   // Certification Authority Authorization
 }
 
-impl QType {
-    pub fn to_num(&self) -> u16 {
+impl QRType {
+    pub fn to_u16(&self) -> u16 {
         match *self {
-            QType::A => 1,       
-            QType::NS => 2,      
-            QType::CNAME => 5,   
-            QType::SOA => 6,     
-            QType::PTR => 12,    
-            QType::MX => 15,     
-            QType::TXT => 16,    
-            QType::AAAA => 28,   
-            QType::SRV => 33,    
-            QType::CAA => 257,
-            QType::UNKNOWN(x) => x
+            QRType::A => 1,       
+            QRType::NS => 2,      
+            QRType::CNAME => 5,   
+            QRType::SOA => 6,     
+            QRType::PTR => 12,    
+            QRType::MX => 15,     
+            QRType::TXT => 16,    
+            QRType::AAAA => 28,   
+            QRType::SRV => 33,    
+            QRType::CAA => 257,
+            QRType::UNKNOWN(x) => x
         }
     }
 
-    pub fn from_num(num: u16) -> QType {
-        match num {
-            1 => QType::A,       
-            2 => QType::NS,      
-            5 => QType::CNAME,   
-            6 => QType::SOA,     
-            12 => QType::PTR,    
-            15 => QType::MX,     
-            16 => QType::TXT,    
-            28 => QType::AAAA,   
-            33 => QType::SRV,    
-            257 => QType::CAA,
-            _ => QType::UNKNOWN(num)
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum QClass {
-    IN = 1,    // Internet
-    CH = 3,    // CHAOS
-    HS = 4,    // Hesiod
-    ANY = 255, // Any class
-}
-
-impl QClass {
-    pub fn from_u16(value: u16) -> Option<QClass> {
+    pub fn from_u16(value: u16) -> QRType {
         match value {
-            1 => Some(QClass::IN),
-            3 => Some(QClass::CH),
-            4 => Some(QClass::HS),
-            255 => Some(QClass::ANY),
-            _ => None,
+            1 => QRType::A,       
+            2 => QRType::NS,      
+            5 => QRType::CNAME,   
+            6 => QRType::SOA,     
+            12 => QRType::PTR,    
+            15 => QRType::MX,     
+            16 => QRType::TXT,    
+            28 => QRType::AAAA,   
+            33 => QRType::SRV,    
+            257 => QRType::CAA,
+            _ => QRType::UNKNOWN(value)
         }
     }
 }
@@ -79,13 +60,13 @@ impl QClass {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSQuestion {
     pub qname: String, // The domain name being queried
-    pub qtype: QType, // The type of the query
-    pub qclass: QClass, // The class of the query
+    pub qtype: QRType, // The type of the query
+    pub qclass: QRClass, // The class of the query
 }
 
 impl DNSQuestion {
     // Constructor for creating a new DNSQuestion
-    pub fn new(qname:String,qtype:QType,qclass:QClass) -> Self { 
+    pub fn new(qname:String,qtype:QRType,qclass:QRClass) -> Self { 
         DNSQuestion { 
             qname, 
             qtype, 
@@ -93,7 +74,7 @@ impl DNSQuestion {
         }}
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
         buffer.read_qname(&mut self.qname)?;
-        self.qtype = QType::from_num(buffer.read_u16()?); // qtype
+        self.qtype = QRType::from_u16(buffer.read_u16()?); // qtype
         let _ = buffer.read_u16()?; // class
 
         Ok(())
@@ -182,22 +163,22 @@ impl DNSPacket {
         result.header.read(buffer)?;
 
         for _ in 0..result.header.qdcount {
-            let mut question = DNSQuestion::new("".to_string(), QType::UNKNOWN(0),QClass::ANY);
+            let mut question = DNSQuestion::new("".to_string(), QRType::UNKNOWN(0),QRClass::ANY);
             question.read(buffer)?;
-            result.question.questions.push(question);
+            result.question.add_question(question);
         }
 
         for _ in 0..result.header.ancount {
             let rec = DNSRecord::read(buffer)?;
-            result.answer.answers.push(rec);
+            result.answer.add_answer(rec);
         }
         for _ in 0..result.header.nscount {
             let rec = DNSRecord::read(buffer)?;
-            result.authority.records.push(rec);
+            result.authority.add_record(rec);
         }
         for _ in 0..result.header.arcount {
             let rec = DNSRecord::read(buffer)?;
-            result.additional.records.push(rec);
+            result.additional.add_record(rec);
         }
 
         Ok(result)

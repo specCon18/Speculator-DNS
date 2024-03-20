@@ -2,11 +2,11 @@ use super::byte_packet_buffer::BytePacketBuffer;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum OpCode {
-    Query = 0,          // Standard query (QUERY)
-    IQuery = 1,         // Inverse query (IQUERY, deprecated)
-    Status = 2,         // Server status request (STATUS)
-    Notify = 4,         // Notify (NOTIFY, RFC 1996)
-    Update = 5,         // Dynamic update (UPDATE, RFC 2136)
+    Query,          // Standard query (QUERY)
+    IQuery,         // Inverse query (IQUERY, deprecated)
+    Status,         // Server status request (STATUS)
+    Notify,         // Notify (NOTIFY, RFC 1996)
+    Update,         // Dynamic update (UPDATE, RFC 2136)
     // Codes 6-15 are reserved for future use
 }
 
@@ -25,8 +25,8 @@ impl OpCode {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum QRFlag {
-    Query = 0,
-    Response = 1
+    Query,
+    Response
 }
 
 impl QRFlag {
@@ -41,8 +41,8 @@ impl QRFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum AAFlag {
-    NonAuthoritative = 0,
-    Authoritative = 1
+    NonAuthoritative,
+    Authoritative
 }
 
 impl AAFlag {
@@ -57,8 +57,8 @@ impl AAFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum TCFlag {
-    NonTruncated = 0,
-    Truncated = 1
+    NonTruncated,
+    Truncated
 }
 
 impl TCFlag {
@@ -73,8 +73,8 @@ impl TCFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum RDFlag {
-    NonDesired = 0,
-    Desired = 1
+    NonDesired,
+    Desired
 }
 
 impl RDFlag {
@@ -89,8 +89,8 @@ impl RDFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum RAFlag {
-    NonAvailable = 0,
-    Available = 1
+    NonAvailable,
+    Available
 }
 
 impl RAFlag {
@@ -105,7 +105,7 @@ impl RAFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ZFlag {
-    Unused = 0,
+    Unused,
 }
 
 impl ZFlag {
@@ -119,8 +119,8 @@ impl ZFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ADFlag {
-    NonAuthenticated = 0,
-    Authenticated = 1
+    NonAuthenticated,
+    Authenticated
 }
 
 impl ADFlag {
@@ -135,8 +135,8 @@ impl ADFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CDFlag {
-    Enabled = 0,
-    Disabled = 1
+    Enabled,
+    Disabled
 }
 
 impl CDFlag {
@@ -151,17 +151,17 @@ impl CDFlag {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum RCode {
-    NoError = 0,     // No error condition
-    FormErr = 1,     // Format error - The name server was unable to interpret the query.
-    ServFail = 2,    // Server failure - The name server was unable to process this query due to a problem with the name server.
-    NXDomain = 3,    // Non-Existent Domain - The domain name referenced in the query does not exist.
-    NotImp = 4,      // Not Implemented - The name server does not support the requested kind of query.
-    Refused = 5,     // Query refused - The name server refuses to perform the specified operation for policy reasons.
-    YXDomain = 6,    // Name Exists when it should not
-    YXRRSet = 7,     // RR Set Exists when it should not
-    NXRRSet = 8,     // RR Set that should exist does not
-    NotAuth = 9,     // Server Not Authoritative for zone / Not Authorized
-    NotZone = 10,    // Name not contained in zone
+    NoError,     // No error condition
+    FormErr,     // Format error - The name server was unable to interpret the query.
+    ServFail,    // Server failure - The name server was unable to process this query due to a problem with the name server.
+    NXDomain,    // Non-Existent Domain - The domain name referenced in the query does not exist.
+    NotImp,      // Not Implemented - The name server does not support the requested kind of query.
+    Refused,     // Query refused - The name server refuses to perform the specified operation for policy reasons.
+    YXDomain,    // Name Exists when it should not
+    YXRRSet,     // RR Set Exists when it should not
+    NXRRSet,     // RR Set that should exist does not
+    NotAuth,     // Server Not Authoritative for zone / Not Authorized
+    NotZone,    // Name not contained in zone
     // Codes 11-15 are reserved for future use
     // Extended RCODEs (16-4095) are also available but not commonly used in basic implementations
 }
@@ -207,21 +207,21 @@ pub struct DNSHeaderSection {
 impl DNSHeaderSection {
     // Constructor for creating a new DNSHeaderSection
     pub fn new() -> Self {
-        let id = 0;
-        let qr = QRFlag::Query;
-        let opcode = OpCode::Query;
-        let aa = AAFlag::NonAuthoritative;
-        let tc = TCFlag::NonTruncated;
-        let rd = RDFlag::NonDesired;
-        let ra = RAFlag::NonAvailable;
-        let z = ZFlag::Unused;
-        let ad = ADFlag::NonAuthenticated;
-        let cd = CDFlag::Disabled;
-        let rcode = RCode::NoError;
-        let qdcount = 0;
-        let ancount = 0;
-        let nscount = 0;
-        let arcount = 0;
+        let id: u16 = 0;
+        let qr:QRFlag = QRFlag::Query;
+        let opcode:OpCode = OpCode::Query;
+        let aa:AAFlag = AAFlag::NonAuthoritative;
+        let tc: TCFlag = TCFlag::NonTruncated;
+        let rd: RDFlag = RDFlag::NonDesired;
+        let ra: RAFlag = RAFlag::NonAvailable;
+        let z: ZFlag = ZFlag::Unused;
+        let ad: ADFlag = ADFlag::NonAuthenticated;
+        let cd: CDFlag = CDFlag::Disabled;
+        let rcode: RCode = RCode::NoError;
+        let qdcount: u16 = 0;
+        let ancount: u16 = 0;
+        let nscount: u16 = 0;
+        let arcount: u16 = 0;
         DNSHeaderSection { id, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, qdcount, ancount, nscount, arcount }
     }
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {

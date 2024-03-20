@@ -1,4 +1,3 @@
-mod records;
 mod message;
 
 use std::fs::File;

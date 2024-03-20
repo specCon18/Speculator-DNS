@@ -1,71 +1,24 @@
-use crate::message::byte_packet_buffer::BytePacketBuffer;
+use crate::message::{QRType,byte_packet_buffer::BytePacketBuffer};
 use std::net::{
     Ipv4Addr,
     Ipv6Addr
 };
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum RType {
-    UNKNOWN(u16),
-    A,       // IPv4 address
-    NS,      // Name Server
-    CNAME,   // Canonical Name
-    MX,     // Mail Exchange
-    TXT,    // Text Record
-    AAAA,   // IPv6 address
-    SOA,     // State of Authority
-    CAA,   // Certification Authority Authorization
-    SRV,    // Service Record
-    PTR,    // Pointer Record
-}
-
-impl RType {
-    pub fn to_num(&self) -> u16 {
-        match *self {
-            RType::A => 1,       
-            RType::NS => 2,      
-            RType::CNAME => 5,   
-            RType::SOA => 6,     
-            RType::PTR => 12,    
-            RType::MX => 15,     
-            RType::TXT => 16,    
-            RType::AAAA => 28,   
-            RType::SRV => 33,    
-            RType::CAA => 257,
-            RType::UNKNOWN(x) => x
-        }
-    }
-
-    pub fn from_num(num: u16) -> RType {
-        match num {
-            1 => RType::A,       
-            2 => RType::NS,      
-            5 => RType::CNAME,   
-            6 => RType::SOA,     
-            12 => RType::PTR,    
-            15 => RType::MX,     
-            16 => RType::TXT,    
-            28 => RType::AAAA,   
-            33 => RType::SRV,    
-            257 => RType::CAA,
-            _ => RType::UNKNOWN(num)
-        }
-    }
-}
-
 #[derive(Debug, PartialEq,Eq)]
-pub enum RClass {
+pub enum QRClass {
     IN = 1,    // Internet
     CH = 3,    // CHAOS
     HS = 4,    // Hesiod
+    ANY = 255, // Any class
 }
 
-impl RClass {
-    pub fn from_u16(value: u16) -> Option<RClass> {
+impl QRClass {
+    pub fn from_u16(value: u16) -> Option<QRClass> {
         match value {
-            1 => Some(RClass::IN),
-            3 => Some(RClass::CH),
-            4 => Some(RClass::HS),
+            1 => Some(QRClass::IN),
+            3 => Some(QRClass::CH),
+            4 => Some(QRClass::HS),
+            255 => Some(QRClass::ANY),
             _ => None,
         }
     }
@@ -92,13 +45,16 @@ impl DNSRecord {
         buffer.read_qname(&mut domain)?;
 
         let qtype_num:u16 = buffer.read_u16()?;
-        let qtype: RType = RType::from_num(qtype_num);
-        let _ = buffer.read_u16()?;
+        let qtype: QRType = QRType::from_u16(qtype_num);
+
+        let qclass_num:u16 = buffer.read_u16()?;
+        let class:QRClass = QRClass::from_u16(qclass_num).expect("");
+        
         let ttl: u32 = buffer.read_u32()?;
         let data_len:u16 = buffer.read_u16()?;
 
         match qtype {
-            RType::A => {
+            QRType::A => {
                 let raw_addr = buffer.read_u32()?;
                 let addr = Ipv4Addr::new(
                     ((raw_addr >> 24) & 0xFF) as u8,
@@ -107,37 +63,37 @@ impl DNSRecord {
                     ((raw_addr >> 0) & 0xFF) as u8,
                 );
 
-                Ok(DNSRecord::A(DNSARecord::new(domain, ttl, addr)))
+                Ok(DNSRecord::A(DNSARecord::new(domain, class, ttl, addr)))
             }
-            RType::NS => {
+            QRType::NS => {
                 let mut ns_domain: String = String::new();
                 buffer.read_qname(&mut ns_domain)?;
 
-                Ok(DNSRecord::NS(DNSNSRecord::new(domain, ttl, ns_domain)))
+                Ok(DNSRecord::NS(DNSNSRecord::new(domain,class, ttl, ns_domain)))
             }
-            RType::CNAME => {
+            QRType::CNAME => {
                 let mut canonical_name: String = String::new();
                 buffer.read_qname(&mut canonical_name)?;
 
-                Ok(DNSRecord::CNAME(DNSCNAMERecord::new(domain, ttl, canonical_name)))
+                Ok(DNSRecord::CNAME(DNSCNAMERecord::new(domain,class, ttl, canonical_name)))
             }
-            RType::MX => {
+            QRType::MX => {
                 let mut exchange: String = String::new();
                 buffer.read_qname(&mut exchange)?;
 
                 let preference: u16 = buffer.read_u16()?;
 
-                Ok(DNSRecord::MX(DNSMXRecord::new(domain, ttl, preference, exchange)))
+                Ok(DNSRecord::MX(DNSMXRecord::new(domain, class, ttl, preference, exchange)))
             }
-            RType::TXT => {
+            QRType::TXT => {
                 let i:u16 = 0;
                 let mut text: String = String::new();
                 while i <= data_len {                    
                     text.push(buffer.read_byte()? as char)
                 }
-                Ok(DNSRecord::TXT(DNSTXTRecord::new(domain, ttl, text)))
+                Ok(DNSRecord::TXT(DNSTXTRecord::new(domain, class, ttl, text)))
             }
-            RType::AAAA => {
+            QRType::AAAA => {
                 let raw_addr = buffer.read_u128()?;
                 let address:Ipv6Addr = Ipv6Addr::new(
                     ((raw_addr >> 112) & 0xFFFF) as u16,
@@ -149,9 +105,9 @@ impl DNSRecord {
                     ((raw_addr >> 16) & 0xFFFF) as u16,
                     ((raw_addr >> 0) & 0xFFFF) as u16,
                 );
-                Ok(DNSRecord::AAAA(DNSAAAARecord::new(domain, ttl, address)))
+                Ok(DNSRecord::AAAA(DNSAAAARecord::new(domain,class, ttl, address)))
             }
-            RType::SOA => {
+            QRType::SOA => {
                 let mut mname: String = String::new(); // Primary name server
                 let _ = buffer.read_qname(&mut mname);
                 let mut rname: String = String::new(); // Responsible authority's mailbox
@@ -161,9 +117,9 @@ impl DNSRecord {
                 let retry: u32 = buffer.read_u32()?;    // Retry interval
                 let expire: u32 = buffer.read_u32()?;   // Expiration limit
                 let minimum: u32 = buffer.read_u32()?;  // Minimum TTL
-                Ok(DNSRecord::SOA(DNSSOARecord::new(domain, ttl, mname, rname, serial, refresh, retry, expire, minimum)))
+                Ok(DNSRecord::SOA(DNSSOARecord::new(domain, class, ttl, mname, rname, serial, refresh, retry, expire, minimum)))
             }
-            RType::CAA => {
+            QRType::CAA => {
                 let flags: u8 = buffer.read_byte()?;
                 let tag_len: u8 = buffer.read_byte()?;
                 let mut i:u16 = 0;
@@ -177,24 +133,24 @@ impl DNSRecord {
                 while i <= value_len {                    
                     tag.push(buffer.read_byte()? as char)
                 }
-                Ok(DNSRecord::CAA(DNSCAARecord::new(domain, ttl, flags, tag, value)))
+                Ok(DNSRecord::CAA(DNSCAARecord::new(domain, class, ttl, flags, tag, value)))
             }
-            RType::SRV => {
+            QRType::SRV => {
                 let priority: u16 = buffer.read_u16()?;
                 let weight: u16 = buffer.read_u16()?;
                 let port: u16 = buffer.read_u16()?;
                 let mut target: String = String::new();
                 buffer.read_qname(&mut target)?;
-                Ok(DNSRecord::SRV(DNSSRVRecord::new(domain, ttl, priority, weight, port, target)))
+                Ok(DNSRecord::SRV(DNSSRVRecord::new(domain, class, ttl, priority, weight, port, target)))
             }
-            RType::PTR => {
+            QRType::PTR => {
                 let mut ptrdname: String = String::new();
                 buffer.read_qname(&mut ptrdname)?;
-                Ok(DNSRecord::PTR(DNSPTRRecord::new(domain, ttl, ptrdname)))
+                Ok(DNSRecord::PTR(DNSPTRRecord::new(domain,class, ttl, ptrdname)))
             }
-            RType::UNKNOWN(_) => {
+            QRType::UNKNOWN(_) => {
                 buffer.step(data_len as usize)?;
-                Ok(DNSRecord::UNKNOWN(DNSUNKNOWNRecord::new(domain, ttl)))
+                Ok(DNSRecord::UNKNOWN(DNSUNKNOWNRecord::new(domain,class, ttl)))
             }
         }
     }
@@ -202,15 +158,15 @@ impl DNSRecord {
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSRecordPreamble {
     pub name: String, // The domain name the record pertains to
-    pub rtype: RType, // The type of the resource record
-    pub class: RClass, // The class of the resource record
+    pub rtype: QRType, // The type of the resource record
+    pub class: QRClass, // The class of the resource record
     pub ttl: u32, // Time to live, in seconds
     pub rdlength: u16, // Length of the RDATA field
 }
 
 impl DNSRecordPreamble {
     // Constructor for creating a new DNSRecordPreamble
-    pub fn new(name: String, rtype: RType, class: RClass, ttl: u32, rdlength: u16) -> Self { DNSRecordPreamble { name, rtype, class, ttl, rdlength }}
+    pub fn new(name: String, rtype: QRType, class: QRClass, ttl: u32, rdlength: u16) -> Self { DNSRecordPreamble { name, rtype, class, ttl, rdlength }}
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -221,12 +177,12 @@ pub struct DNSARecord {
 
 impl DNSARecord {
     // Constructor for creating a new DNSARecord
-    pub fn new(name: String, ttl: u32, ipv4_address: std::net::Ipv4Addr) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, ipv4_address: std::net::Ipv4Addr) -> Self {
         DNSARecord {
             preamble: DNSRecordPreamble {
                 name,
-                rtype: RType::A, // The type code for an A record is 1
-                class: RClass::IN, // The class for Internet is 1 (IN)
+                rtype: QRType::A, // The type code for an A record is 1
+                class, // The class for Internet is 1 (IN)
                 ttl,
                 rdlength: 4, // IPv4 addresses are 4 bytes in length
             },
@@ -242,12 +198,12 @@ pub struct DNSUNKNOWNRecord {
 
 impl DNSUNKNOWNRecord {
     // Constructor for creating a new DNSARecord
-    pub fn new(name: String, ttl: u32) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32) -> Self {
         DNSUNKNOWNRecord {
             preamble: DNSRecordPreamble {
                 name,
-                rtype: RType::UNKNOWN(0), // The type code for an A record is 1
-                class: RClass::IN, // The class for Internet is 1 (IN)
+                rtype: QRType::UNKNOWN(0), // The type code for an A record is 1
+                class, // The class for Internet is 1 (IN)
                 ttl,
                 rdlength: 4, // IPv4 addresses are 4 bytes in length
             },
@@ -263,13 +219,13 @@ pub struct DNSCNAMERecord {
 
 impl DNSCNAMERecord {
     // Constructor for creating a new DNSCNAMERecord
-    pub fn new(name: String, ttl: u32, canonical_name: String) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, canonical_name: String) -> Self {
         let rdlength = canonical_name.len() as u16; // Length of the canonical name in bytes
         DNSCNAMERecord {
             preamble: DNSRecordPreamble {
                 name,
-                rtype: RType::CNAME, // The type code for a CNAME record is 5
-                class: RClass::IN, // The class for Internet is 1 (IN)
+                rtype: QRType::CNAME, // The type code for a CNAME record is 5
+                class, // The class for Internet is 1 (IN)
                 ttl,
                 rdlength, // Set based on the length of the canonical name
             },
@@ -286,13 +242,13 @@ pub struct DNSNSRecord {
 
 impl DNSNSRecord {
     // Constructor for creating a new DNSNSRecord
-    pub fn new(name: String, ttl: u32, ns_domain: String) -> Self {
+    pub fn new(name: String,class: QRClass, ttl: u32, ns_domain: String) -> Self {
         let rdlength = ns_domain.len() as u16; // Length of the domain name in bytes
         DNSNSRecord {
             preamble: DNSRecordPreamble {
                 name,
-                rtype: RType::NS, // The type code for an NS record is 2
-                class: RClass::IN, // The class for Internet is 1 (IN)
+                rtype: QRType::NS, // The type code for an NS record is 2
+                class, // The class for Internet is 1 (IN)
                 ttl,
                 rdlength,
             },
@@ -309,9 +265,9 @@ pub struct DNSMXRecord {
 }
 
 impl DNSMXRecord {
-    pub fn new(name: String, ttl: u32, preference: u16, exchange: String) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, preference: u16, exchange: String) -> Self {
         DNSMXRecord {
-            preamble: DNSRecordPreamble::new(name, RType::MX, RClass::IN, ttl, 0), // rdlength will be set later
+            preamble: DNSRecordPreamble::new(name, QRType::MX, class, ttl, 0), // rdlength will be set later
             preference,
             exchange,
         }
@@ -325,9 +281,9 @@ pub struct DNSTXTRecord {
 }
 
 impl DNSTXTRecord {
-    pub fn new(name: String, ttl: u32, text: String) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, text: String) -> Self {
         DNSTXTRecord {
-            preamble: DNSRecordPreamble::new(name, RType::TXT, RClass::IN, ttl, 0), // rdlength will be set later
+            preamble: DNSRecordPreamble::new(name, QRType::TXT, class, ttl, 0), // rdlength will be set later
             text,
         }
     }
@@ -340,9 +296,9 @@ pub struct DNSAAAARecord {
 }
 
 impl DNSAAAARecord {
-    pub fn new(name: String, ttl: u32, address: std::net::Ipv6Addr) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, address: std::net::Ipv6Addr) -> Self {
         DNSAAAARecord {
-            preamble: DNSRecordPreamble::new(name, RType::AAAA, RClass::IN, ttl, 16), // IPv6 addresses are 16 bytes
+            preamble: DNSRecordPreamble::new(name, QRType::AAAA, class, ttl, 16), // IPv6 addresses are 16 bytes
             address,
         }
     }
@@ -361,9 +317,9 @@ pub struct DNSSOARecord {
 }
 
 impl DNSSOARecord {
-    pub fn new(name: String, ttl: u32, mname: String, rname: String, serial: u32, refresh: u32, retry: u32, expire: u32, minimum: u32) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, mname: String, rname: String, serial: u32, refresh: u32, retry: u32, expire: u32, minimum: u32) -> Self {
         DNSSOARecord {
-            preamble: DNSRecordPreamble::new(name, RType::SOA, RClass::IN, ttl, 0), // rdlength will be set later
+            preamble: DNSRecordPreamble::new(name, QRType::SOA, class, ttl, 0), // rdlength will be set later
             mname,
             rname,
             serial,
@@ -384,9 +340,9 @@ pub struct DNSCAARecord {
 }
 
 impl DNSCAARecord {
-    pub fn new(name: String, ttl: u32, flags: u8, tag: String, value: String) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, flags: u8, tag: String, value: String) -> Self {
         DNSCAARecord {
-            preamble: DNSRecordPreamble::new(name, RType::CAA, RClass::IN, ttl, 0), // rdlength will be set later
+            preamble: DNSRecordPreamble::new(name, QRType::CAA, class, ttl, 0), // rdlength will be set later
             flags,
             tag,
             value,
@@ -404,9 +360,9 @@ pub struct DNSSRVRecord {
 }
 
 impl DNSSRVRecord {
-    pub fn new(name: String, ttl: u32, priority: u16, weight: u16, port: u16, target: String) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, priority: u16, weight: u16, port: u16, target: String) -> Self {
         DNSSRVRecord {
-            preamble: DNSRecordPreamble::new(name, RType::SRV, RClass::IN, ttl, 0), // rdlength will be set later
+            preamble: DNSRecordPreamble::new(name, QRType::SRV, class, ttl, 0), // rdlength will be set later
             priority,
             weight,
             port,
@@ -422,9 +378,9 @@ pub struct DNSPTRRecord {
 }
 
 impl DNSPTRRecord {
-    pub fn new(name: String, ttl: u32, ptrdname: String) -> Self {
+    pub fn new(name: String, class:QRClass, ttl: u32, ptrdname: String) -> Self {
         DNSPTRRecord {
-            preamble: DNSRecordPreamble::new(name, RType::PTR, RClass::IN, ttl, 0), // rdlength will be set later
+            preamble: DNSRecordPreamble::new(name, QRType::PTR, class, ttl, 0), // rdlength will be set later
             ptrdname,
         }
     }
