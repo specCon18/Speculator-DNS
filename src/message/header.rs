@@ -206,7 +206,22 @@ pub struct DNSHeaderSection {
 
 impl DNSHeaderSection {
     // Constructor for creating a new DNSHeaderSection
-    pub fn new(id:u16,qr:QRFlag,opcode:OpCode,aa:AAFlag,tc:TCFlag,rd:RDFlag,ra:RAFlag,z:ZFlag,ad:ADFlag,cd:CDFlag,rcode:RCode,qdcount:u16,ancount:u16,nscount:u16,arcount:u16) -> Self {
+    pub fn new() -> Self {
+        let id = 0;
+        let qr = QRFlag::Query;
+        let opcode = OpCode::Query;
+        let aa = AAFlag::NonAuthoritative;
+        let tc = TCFlag::NonTruncated;
+        let rd = RDFlag::NonDesired;
+        let ra = RAFlag::NonAvailable;
+        let z = ZFlag::Unused;
+        let ad = ADFlag::NonAuthenticated;
+        let cd = CDFlag::Disabled;
+        let rcode = RCode::NoError;
+        let qdcount = 0;
+        let ancount = 0;
+        let nscount = 0;
+        let arcount = 0;
         DNSHeaderSection { id, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, qdcount, ancount, nscount, arcount }
     }
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {

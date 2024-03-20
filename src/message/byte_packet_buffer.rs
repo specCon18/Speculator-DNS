@@ -77,7 +77,7 @@ impl BytePacketBuffer {
 
         Ok(res)
     }
-
+    /// Read sixteen bytes, stepping sixteen steps forward
     pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
         let res = ((self.read_byte()? as u128) << 120)
             | ((self.read_byte()? as u128) << 112)

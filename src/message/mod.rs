@@ -85,7 +85,12 @@ pub struct DNSQuestion {
 
 impl DNSQuestion {
     // Constructor for creating a new DNSQuestion
-    pub fn new(qname: String, qtype: QType, qclass: QClass) -> Self { DNSQuestion { qname, qtype, qclass }}
+    pub fn new(qname:String,qtype:QType,qclass:QClass) -> Self { 
+        DNSQuestion { 
+            qname, 
+            qtype, 
+            qclass 
+        }}
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
         buffer.read_qname(&mut self.qname)?;
         self.qtype = QType::from_num(buffer.read_u16()?); // qtype
@@ -97,7 +102,7 @@ impl DNSQuestion {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSQuestionSection {
-    questions: Vec<DNSQuestion>,
+    pub questions: Vec<DNSQuestion>,
 }
 
 impl DNSQuestionSection {
@@ -110,7 +115,7 @@ impl DNSQuestionSection {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSAnswerSection {
-    answers: Vec<DNSRecord>,
+    pub answers: Vec<DNSRecord>,
 }
 
 impl DNSAnswerSection {
@@ -123,7 +128,7 @@ impl DNSAnswerSection {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSAuthoritySection {
-    records: Vec<DNSRecord>,
+    pub records: Vec<DNSRecord>,
 }
 
 impl DNSAuthoritySection {
@@ -136,7 +141,7 @@ impl DNSAuthoritySection {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSAdditionalSection {
-    records: Vec<DNSRecord>,
+    pub records: Vec<DNSRecord>,
 }
 
 impl DNSAdditionalSection {
@@ -148,7 +153,7 @@ impl DNSAdditionalSection {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct DNSMessage {
+pub struct DNSPacket {
     pub header: DNSHeaderSection,
     pub question: DNSQuestionSection,
     pub answer: DNSAnswerSection,
@@ -156,9 +161,45 @@ pub struct DNSMessage {
     pub additional: DNSAdditionalSection
 }
 
-impl DNSMessage {
-    // Constructor for creating a new DNSMessage
-    pub fn new(header:DNSHeaderSection,question:DNSQuestionSection,answer:DNSAnswerSection,authority:DNSAuthoritySection,additional:DNSAdditionalSection) -> Self {
-        DNSMessage { header, question, answer, authority, additional }
+impl DNSPacket {
+    // Constructor for creating a new DNSPacket
+    pub fn new() -> Self {
+        let header:DNSHeaderSection = DNSHeaderSection::new();
+        let question:DNSQuestionSection = DNSQuestionSection::new();
+        let answer:DNSAnswerSection = DNSAnswerSection::new();
+        let authority:DNSAuthoritySection = DNSAuthoritySection::new();
+        let additional:DNSAdditionalSection = DNSAdditionalSection::new();
+        DNSPacket { 
+            header,
+            question,
+            answer,
+            authority,
+            additional
+        }
+    }
+    pub fn from_buffer(buffer: &mut BytePacketBuffer) -> Result<DNSPacket,std::io::Error> {
+        let mut result:DNSPacket = DNSPacket::new();
+        result.header.read(buffer)?;
+
+        for _ in 0..result.header.qdcount {
+            let mut question = DNSQuestion::new("".to_string(), QType::UNKNOWN(0),QClass::ANY);
+            question.read(buffer)?;
+            result.question.questions.push(question);
+        }
+
+        for _ in 0..result.header.ancount {
+            let rec = DNSRecord::read(buffer)?;
+            result.answer.answers.push(rec);
+        }
+        for _ in 0..result.header.nscount {
+            let rec = DNSRecord::read(buffer)?;
+            result.authority.records.push(rec);
+        }
+        for _ in 0..result.header.arcount {
+            let rec = DNSRecord::read(buffer)?;
+            result.additional.records.push(rec);
+        }
+
+        Ok(result)
     }
 }
