@@ -87,6 +87,28 @@ impl BytePacketBuffer {
         Ok(res)
     }
 
+    pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
+        let res = ((self.read()? as u128) << 120)
+            | ((self.read()? as u128) << 112)
+            | ((self.read()? as u128) << 104)
+            | ((self.read()? as u128) << 96)
+            | ((self.read()? as u128) << 88)
+            | ((self.read()? as u128) << 80)
+            | ((self.read()? as u128) << 72)
+            | ((self.read()? as u128) << 64)
+            | ((self.read()? as u128) << 56)
+            | ((self.read()? as u128) << 48)
+            | ((self.read()? as u128) << 40)
+            | ((self.read()? as u128) << 32)
+            | ((self.read()? as u128) << 24)
+            | ((self.read()? as u128) << 16)
+            | ((self.read()? as u128) << 8)
+            | ((self.read()? as u128) << 0);
+    
+        Ok(res)
+    }
+    
+
     /// Read a qname
     ///
     /// The tricky part: Reading domain names, taking labels into consideration.

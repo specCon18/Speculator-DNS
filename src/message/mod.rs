@@ -200,19 +200,23 @@ impl DNSMessage {
                 Ok(DNSRecord::A(DNSARecord::new(domain, ttl, addr)))
             }
             QType::NS => {
-                //TODO: Needs to read the ns record
-                let ns_domain: String;
+                let mut ns_domain: String = String::new();
+                buffer.read_qname(&mut ns_domain)?;
+
                 Ok(DNSRecord::NS(DNSNSRecord::new(domain, ttl, ns_domain)))
             }
             QType::CNAME => {
-                //TODO: Needs to read the canonical_name
-                let canonical_name: String;
+                let mut canonical_name: String = String::new();
+                buffer.read_qname(&mut canonical_name)?;
+
                 Ok(DNSRecord::CNAME(DNSCNAMERecord::new(domain, ttl, canonical_name)))
             }
             QType::MX => {
-                //TODO: Needs to read the preference and exchange domain
-                let preference: u16;
-                let exchange: String;
+                let mut exchange: String = String::new();
+                buffer.read_qname(&mut exchange)?;
+
+                let preference: u16 = buffer.read_u16()?;
+
                 Ok(DNSRecord::MX(DNSMXRecord::new(domain, ttl, preference, exchange)))
             }
             QType::TXT => {
@@ -221,8 +225,17 @@ impl DNSMessage {
                 Ok(DNSRecord::TXT(DNSTXTRecord::new(domain, ttl, text)))
             }
             QType::AAAA => {
-                //TODO: Parse IPv6 Address
-                let address:Ipv6Addr;
+                let raw_addr = buffer.read_u128()?;
+                let address:Ipv6Addr = Ipv6Addr::new(
+                    ((raw_addr >> 112) & 0xFFFF) as u16,
+                    ((raw_addr >> 96) & 0xFFFF) as u16,
+                    ((raw_addr >> 80) & 0xFFFF) as u16,
+                    ((raw_addr >> 64) & 0xFFFF) as u16,
+                    ((raw_addr >> 48) & 0xFFFF) as u16,
+                    ((raw_addr >> 32) & 0xFFFF) as u16,
+                    ((raw_addr >> 16) & 0xFFFF) as u16,
+                    ((raw_addr >> 0) & 0xFFFF) as u16,
+                );
                 Ok(DNSRecord::AAAA(DNSAAAARecord::new(domain, ttl, address)))
             }
             QType::SOA => {
