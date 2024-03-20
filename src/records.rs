@@ -1,3 +1,9 @@
+use crate::message::byte_packet_buffer::BytePacketBuffer;
+use std::net::{
+    Ipv4Addr,
+    Ipv6Addr
+};
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum RType {
     UNKNOWN(u16),
@@ -80,6 +86,119 @@ pub enum DNSRecord {
     UNKNOWN(DNSUNKNOWNRecord)
 }
 
+impl DNSRecord {
+    pub fn read(buffer: &mut BytePacketBuffer) -> Result<DNSRecord,std::io::Error> {
+        let mut domain = String::new();
+        buffer.read_qname(&mut domain)?;
+
+        let qtype_num:u16 = buffer.read_u16()?;
+        let qtype: RType = RType::from_num(qtype_num);
+        let _ = buffer.read_u16()?;
+        let ttl: u32 = buffer.read_u32()?;
+        let data_len:u16 = buffer.read_u16()?;
+
+        match qtype {
+            RType::A => {
+                let raw_addr = buffer.read_u32()?;
+                let addr = Ipv4Addr::new(
+                    ((raw_addr >> 24) & 0xFF) as u8,
+                    ((raw_addr >> 16) & 0xFF) as u8,
+                    ((raw_addr >> 8) & 0xFF) as u8,
+                    ((raw_addr >> 0) & 0xFF) as u8,
+                );
+
+                Ok(DNSRecord::A(DNSARecord::new(domain, ttl, addr)))
+            }
+            RType::NS => {
+                let mut ns_domain: String = String::new();
+                buffer.read_qname(&mut ns_domain)?;
+
+                Ok(DNSRecord::NS(DNSNSRecord::new(domain, ttl, ns_domain)))
+            }
+            RType::CNAME => {
+                let mut canonical_name: String = String::new();
+                buffer.read_qname(&mut canonical_name)?;
+
+                Ok(DNSRecord::CNAME(DNSCNAMERecord::new(domain, ttl, canonical_name)))
+            }
+            RType::MX => {
+                let mut exchange: String = String::new();
+                buffer.read_qname(&mut exchange)?;
+
+                let preference: u16 = buffer.read_u16()?;
+
+                Ok(DNSRecord::MX(DNSMXRecord::new(domain, ttl, preference, exchange)))
+            }
+            RType::TXT => {
+                let i:u16 = 0;
+                let mut text: String = String::new();
+                while i <= data_len {                    
+                    text.push(buffer.read_byte()? as char)
+                }
+                Ok(DNSRecord::TXT(DNSTXTRecord::new(domain, ttl, text)))
+            }
+            RType::AAAA => {
+                let raw_addr = buffer.read_u128()?;
+                let address:Ipv6Addr = Ipv6Addr::new(
+                    ((raw_addr >> 112) & 0xFFFF) as u16,
+                    ((raw_addr >> 96) & 0xFFFF) as u16,
+                    ((raw_addr >> 80) & 0xFFFF) as u16,
+                    ((raw_addr >> 64) & 0xFFFF) as u16,
+                    ((raw_addr >> 48) & 0xFFFF) as u16,
+                    ((raw_addr >> 32) & 0xFFFF) as u16,
+                    ((raw_addr >> 16) & 0xFFFF) as u16,
+                    ((raw_addr >> 0) & 0xFFFF) as u16,
+                );
+                Ok(DNSRecord::AAAA(DNSAAAARecord::new(domain, ttl, address)))
+            }
+            RType::SOA => {
+                let mut mname: String = String::new(); // Primary name server
+                let _ = buffer.read_qname(&mut mname);
+                let mut rname: String = String::new(); // Responsible authority's mailbox
+                let _ = buffer.read_qname(&mut rname);
+                let serial: u32 = buffer.read_u32()?;   // Serial number
+                let refresh: u32 = buffer.read_u32()?;  // Refresh interval
+                let retry: u32 = buffer.read_u32()?;    // Retry interval
+                let expire: u32 = buffer.read_u32()?;   // Expiration limit
+                let minimum: u32 = buffer.read_u32()?;  // Minimum TTL
+                Ok(DNSRecord::SOA(DNSSOARecord::new(domain, ttl, mname, rname, serial, refresh, retry, expire, minimum)))
+            }
+            RType::CAA => {
+                let flags: u8 = buffer.read_byte()?;
+                let tag_len: u8 = buffer.read_byte()?;
+                let mut i:u16 = 0;
+                let mut tag: String = String::new();
+                while i as u8 <= tag_len {                    
+                    tag.push(buffer.read_byte()? as char)
+                }
+                i = 0;
+                let value_len = data_len - tag_len as u16;
+                let value: String = String::new();
+                while i <= value_len {                    
+                    tag.push(buffer.read_byte()? as char)
+                }
+                Ok(DNSRecord::CAA(DNSCAARecord::new(domain, ttl, flags, tag, value)))
+            }
+            RType::SRV => {
+                let priority: u16 = buffer.read_u16()?;
+                let weight: u16 = buffer.read_u16()?;
+                let port: u16 = buffer.read_u16()?;
+                let mut target: String = String::new();
+                buffer.read_qname(&mut target)?;
+                Ok(DNSRecord::SRV(DNSSRVRecord::new(domain, ttl, priority, weight, port, target)))
+            }
+            RType::PTR => {
+                let mut ptrdname: String = String::new();
+                buffer.read_qname(&mut ptrdname)?;
+                Ok(DNSRecord::PTR(DNSPTRRecord::new(domain, ttl, ptrdname)))
+            }
+            RType::UNKNOWN(_) => {
+                buffer.step(data_len as usize)?;
+                Ok(DNSRecord::UNKNOWN(DNSUNKNOWNRecord::new(domain, ttl)))
+            }
+        }
+    }
+}
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSRecordPreamble {
     pub name: String, // The domain name the record pertains to
