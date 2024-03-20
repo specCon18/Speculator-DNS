@@ -7,8 +7,8 @@ use crate::message::{byte_packet_buffer::BytePacketBuffer, DNSPacket, DNSQuestio
 
 fn main() -> Result<(),std::io::Error>{
     // Perform an A query for google.com
-    let qname:String = "google.com".to_string();
-    let qtype:QRType = QRType::A;
+    let qname:String = "yahoo.com".to_string();
+    let qtype:QRType = QRType::MX;
     let qclass:QRClass = QRClass::IN;
 
     // Using googles public DNS server

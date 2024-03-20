@@ -58,10 +58,10 @@ impl DNSRecord {
                 Ok(DNSRecord::CNAME(DNSCNAMERecord::new(domain,class, ttl, canonical_name)))
             }
             QRType::MX => {
+                let preference: u16 = buffer.read_u16()?;
+
                 let mut exchange: String = String::new();
                 buffer.read_qname(&mut exchange)?;
-
-                let preference: u16 = buffer.read_u16()?;
 
                 Ok(DNSRecord::MX(DNSMXRecord::new(domain, class, ttl, preference, exchange)))
             }
