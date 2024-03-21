@@ -93,7 +93,7 @@ Speculator translates to scout in the context of a pathfinder in latin
     - [ ] stop
       - [ ] --address,-a (which address the gui is bound to)
       - [ ] --port, -P (port that gui is running at)
-- [ ] API's protocol:ENDPOINT_CSV
+- [ ] API's protocol:version
   - [ ] gRPC:v1.0.0
     - [ ] record
       - [ ] create
