@@ -156,3 +156,6 @@ Speculator translates to scout in the context of a pathfinder in latin
   - [ x ] TXT
 - [ x ] Stub Resolver
 - [ x ] Rudementary DNS Server
+
+# Credits
+Huge thanks to [EmilHernvall](https://github.com/EmilHernvall/) for his [dnsguide](https://github.com/EmilHernvall/dnsguide) I wouldn't have known where to start without it!
