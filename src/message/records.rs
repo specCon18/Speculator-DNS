@@ -19,31 +19,27 @@ pub enum DNSRecord {
     UNKNOWN(DNSUNKNOWNRecord)
 }
 
+trait DNSRecordTrait {
+    fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, data_len: u16) -> Result<Self, std::io::Error> where Self: Sized;
+    fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error>;
+    //TODO: Implement Generic for rdata
+    fn new(preamble:DNSRecordPreamble,name:String,class:QRClass,ttl: u32,rdata:) -> Self;
+}
+
 impl DNSRecord {
     pub fn read(buffer: &mut BytePacketBuffer) -> Result<DNSRecord,std::io::Error> {
-        let mut domain = String::new();
+        let mut domain: String = String::new();
         buffer.read_qname(&mut domain)?;
-
         let qtype_num:u16 = buffer.read_u16()?;
         let qtype: QRType = QRType::from_u16(qtype_num);
-
         let qclass_num:u16 = 1;
-        let class:QRClass = QRClass::from_u16(qclass_num).unwrap();
-        
+        let class:QRClass = QRClass::from_u16(qclass_num).unwrap(); 
         let ttl: u32 = buffer.read_u32()?;
         let data_len:u16 = buffer.read_u16()?;
 
         match qtype {
             QRType::A => {
-                let raw_addr = buffer.read_u32()?;
-                let addr = Ipv4Addr::new(
-                    ((raw_addr >> 24) & 0xFF) as u8,
-                    ((raw_addr >> 16) & 0xFF) as u8,
-                    ((raw_addr >> 8) & 0xFF) as u8,
-                    ((raw_addr >> 0) & 0xFF) as u8,
-                );
-
-                Ok(DNSRecord::A(DNSARecord::new(domain, class, ttl, addr)))
+                Ok(DNSRecord::A(DNSARecord::new(domain, class, ttl, Ipv4Addr::new(0, 0, 0, 0))))
             }
             QRType::NS => {
                 let mut ns_domain: String = String::new();
@@ -139,18 +135,8 @@ impl DNSRecord {
     }
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
         match self {
-            DNSRecord::A(record) => {
-                buffer.write_qname(&record.preamble.name)?;
-                buffer.write_u16(record.preamble.rtype.to_u16())?;
-                buffer.write_u16(QRClass::to_u16(&record.preamble.class))?;
-                buffer.write_u32(record.preamble.ttl)?;
-                buffer.write_u16(record.preamble.rdlength)?;
-                
-                // Write the IPv4 address
-                let octets = record.rdata.octets();
-                for octet in octets.iter() {
-                    buffer.write_u8(*octet)?;
-                }
+            DNSRecord::A(_record) => {
+
             },
             DNSRecord::CNAME(record) => {
                 buffer.write_qname(&record.preamble.name)?;
@@ -281,7 +267,6 @@ impl DNSRecord {
                 buffer.write_u16(rdlength as u16)?;
                 buffer.seek(end_pos)?;
             },
-            // Handle other record types similarly...
             _ => return Err(std::io::Error::new(std::io::ErrorKind::Other, "Unsupported record type")),
         }
         Ok(())
@@ -306,10 +291,36 @@ pub struct DNSARecord {
     pub preamble: DNSRecordPreamble, // The common preamble for DNS records
     pub rdata: std::net::Ipv4Addr, // The IPv4 address
 }
+impl DNSRecordTrait for DNSARecord {
+    fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, _data_len: u16) -> Result<Self, std::io::Error> where Self: Sized {
+        let raw_addr: u32 = buffer.read_u32()?;
+        let addr: Ipv4Addr = Ipv4Addr::new(
+            ((raw_addr >> 24) & 0xFF) as u8,
+            ((raw_addr >> 16) & 0xFF) as u8,
+            ((raw_addr >> 8) & 0xFF) as u8,
+            ((raw_addr >> 0) & 0xFF) as u8,
+        );
 
+        Ok(DNSARecord::new(domain, qclass, ttl, addr))
+    }   
+    fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
+        buffer.write_qname(&self.preamble.name)?;
+        buffer.write_u16(self.preamble.rtype.to_u16())?;
+        buffer.write_u16(QRClass::to_u16(&self.preamble.class))?;
+        buffer.write_u32(self.preamble.ttl)?;
+        buffer.write_u16(self.preamble.rdlength)?;
+        
+        // Write the IPv4 address
+        let octets = self.rdata.octets();
+        for octet in octets.iter() {
+            buffer.write_u8(*octet)?;
+        }
+        Ok(())
+    }
+}
 impl DNSARecord {
     // Constructor for creating a new DNSARecord
-    pub fn new(name: String, class:QRClass, ttl: u32, ipv4_address: std::net::Ipv4Addr) -> Self {
+    pub fn new( ipv4_address: std::net::Ipv4Addr) -> Self {
         DNSARecord {
             preamble: DNSRecordPreamble {
                 name,
@@ -337,7 +348,7 @@ impl DNSUNKNOWNRecord {
                 rtype: QRType::UNKNOWN(0), // The type code for an A record is 1
                 class, // The class for Internet is 1 (IN)
                 ttl,
-                rdlength: 4, // IPv4 addresses are 4 bytes in length
+                rdlength: 0,
             },
         }
     }

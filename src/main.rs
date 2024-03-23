@@ -7,7 +7,7 @@ use server::DNSResolver;
 
 fn main() -> Result<(),std::io::Error>{
     // Instanciate Resolver
-    let resolver = DNSResolver::new(Ipv4Addr::new(0,0,0,0), 43120)?;
+    let resolver = DNSResolver::new(Ipv4Addr::new(0,0,0,0), 2053)?;
 
     // For now, queries are handled sequentially, so an infinite loop for servicing
     // requests is initiated.
