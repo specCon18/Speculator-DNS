@@ -4,7 +4,7 @@
 ## Why Speculator-DNS?
 Speculator translates to scout in the context of a pathfinder in latin
 
-##Roadmap
+## Roadmap
 The project kanban can be found [here](https://tree.taiga.io/project/speccon18-speculator-dns/kanban)
 
 ## Features:
