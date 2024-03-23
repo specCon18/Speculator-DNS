@@ -27,8 +27,8 @@ impl DNSRecord {
         let qtype_num:u16 = buffer.read_u16()?;
         let qtype: QRType = QRType::from_u16(qtype_num);
 
-        let qclass_num:u16 = buffer.read_u16()?;
-        let class:QRClass = QRClass::from_u16(qclass_num).expect("");
+        let qclass_num:u16 = 1;
+        let class:QRClass = QRClass::from_u16(qclass_num).unwrap();
         
         let ttl: u32 = buffer.read_u32()?;
         let data_len:u16 = buffer.read_u16()?;

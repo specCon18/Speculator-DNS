@@ -5,7 +5,7 @@ pub(crate) mod byte_packet_buffer;
 use byte_packet_buffer::BytePacketBuffer;
 use records::DNSRecord;
 use header::DNSHeaderSection;
-
+use std::net::Ipv4Addr;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -85,7 +85,7 @@ impl QRClass {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug,Clone, PartialEq, Eq)]
 pub struct DNSQuestion {
     pub qname: String, // The domain name being queried
     pub qtype: QRType, // The type of the query
@@ -214,7 +214,7 @@ impl DNSPacket {
             result.authority.add_record(rec);
         }
         for _ in 0..result.header.arcount {
-            let rec = DNSRecord::read(buffer)?;
+            let rec = DNSRecord::read(buffer).unwrap();
             result.additional.add_record(rec);
         }
 
@@ -243,4 +243,40 @@ impl DNSPacket {
 
         Ok(())
     }
+    pub fn get_random_a(&self) -> Option<Ipv4Addr> {
+        self.answer.answers
+            .iter()
+            .filter_map(|record| match record {
+                DNSRecord::A(a_record) => Some(a_record.rdata),
+                _ => None,
+            })
+            .next()
+    }
+    fn get_ns<'a>(&'a self, qname: &'a str) -> impl Iterator<Item = (&'a str, &'a str)> {
+        self.authority.records
+            .iter()
+            .filter_map(|record| match record {
+                DNSRecord::NS(ns_record) => Some((ns_record.preamble.name.as_str(), ns_record.rdata.as_str())),
+                _ => None,
+            })
+            .filter(move |(domain, _)| qname.ends_with(*domain))
+    }
+    pub fn get_resolved_ns(&self, qname: &str) -> Option<Ipv4Addr> {
+        self.get_ns(qname)
+            .flat_map(|(_, host)| {
+                self.additional.records
+                    .iter()
+                    .filter_map(|record| match record {
+                        DNSRecord::A(a_record) if a_record.preamble.name == *host => Some(a_record.rdata),
+                        _ => None,
+                    })
+            })
+            .next()
+    }
+    pub fn get_unresolved_ns<'a>(&'a self, qname: &'a str) -> Option<&'a str> {
+        self.get_ns(qname)
+            .map(|(_, host)| host)
+            .next()
+    }
+                
 }
