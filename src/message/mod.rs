@@ -57,6 +57,25 @@ impl QRType {
     }
 }
 
+impl std::fmt::Display for QRType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let as_str = match *self {
+            QRType::A => "A (IPv4 address)",
+            QRType::NS => "NS (Name Server)",
+            QRType::CNAME => "CNAME (Canonical Name)",
+            QRType::SOA => "SOA (State of Authority)",
+            QRType::PTR => "PTR (Pointer Record)",
+            QRType::MX => "MX (Mail Exchange)",
+            QRType::TXT => "TXT (Text Record)",
+            QRType::AAAA => "AAAA (IPv6 address)",
+            QRType::SRV => "SRV (Service Record)",
+            QRType::CAA => "CAA (Certification Authority Authorization)",
+            QRType::UNKNOWN(code) => return write!(f, "UNKNOWN ({})", code),
+        };
+        write!(f, "{}", as_str)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq,Eq)]
 pub enum QRClass {
     IN,    // Internet
