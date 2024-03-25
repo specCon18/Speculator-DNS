@@ -18,14 +18,32 @@ impl DNSRecordTrait for DNSTXTRecord {
     }
 
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        buffer.write_qname(&self.preamble.name)?;
-        buffer.write_u16(self.preamble.rtype.to_u16())?;
-        buffer.write_u16(QRClass::to_u16(&self.preamble.class))?;
-        buffer.write_u32(self.preamble.ttl)?;
+        match buffer.write_qname(&self.preamble.name) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.preamble.rtype.to_u16()) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(QRClass::to_u16(&self.preamble.class)) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u32(self.preamble.ttl) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let text_bytes = self.text.as_bytes();
-        buffer.write_u16(text_bytes.len() as u16)?;
+        match buffer.write_u16(text_bytes.len() as u16) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         for byte in text_bytes {
-            buffer.write_u8(*byte)?;
+            match buffer.write_u8(*byte) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
         Ok(())
     }

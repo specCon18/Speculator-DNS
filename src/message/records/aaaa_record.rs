@@ -9,7 +9,10 @@ pub struct DNSAAAARecord {
 
 impl DNSRecordTrait for DNSAAAARecord {
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, _data_len: u16) -> Result<DNSRecord, std::io::Error> {
-        let raw_addr = buffer.read_u128()?;
+        let raw_addr = match buffer.read_u128() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let address:Ipv6Addr = Ipv6Addr::new(
             ((raw_addr >> 112) & 0xFFFF) as u16,
             ((raw_addr >> 96) & 0xFFFF) as u16,
@@ -24,12 +27,30 @@ impl DNSRecordTrait for DNSAAAARecord {
     }
 
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        buffer.write_qname(&self.preamble.name)?;
-        buffer.write_u16(self.preamble.rtype.to_u16())?;
-        buffer.write_u16(QRClass::to_u16(&self.preamble.class))?;
-        buffer.write_u32(self.preamble.ttl)?;
-        buffer.write_u16(16)?; // IPv6 address is always 16 bytes
-        buffer.write_u128(self.address.into())?;
+        match buffer.write_qname(&self.preamble.name) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.preamble.rtype.to_u16()) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(QRClass::to_u16(&self.preamble.class)) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u32(self.preamble.ttl) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(16) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        }; // IPv6 address is always 16 bytes
+        match buffer.write_u128(self.address.into()) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         Ok(())
     }
 }

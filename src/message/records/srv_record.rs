@@ -11,11 +11,23 @@ pub struct DNSSRVRecord {
 
 impl DNSRecordTrait for DNSSRVRecord {
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, _data_len: u16) -> Result<DNSRecord, std::io::Error> {
-        let priority: u16 = buffer.read_u16()?;
-        let weight: u16 = buffer.read_u16()?;
-        let port: u16 = buffer.read_u16()?;
+        let priority: u16 = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        let weight: u16 = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        let port: u16 = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let mut target: String = String::new();
-        buffer.read_qname(&mut target)?;
+        match buffer.read_qname(&mut target) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         let rdata:(u16,u16,u16,String) = (priority,weight,port,target);
 
@@ -23,23 +35,59 @@ impl DNSRecordTrait for DNSSRVRecord {
     }
 
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        buffer.write_qname(&self.preamble.name)?;
-        buffer.write_u16(self.preamble.rtype.to_u16())?;
-        buffer.write_u16(QRClass::to_u16(&self.preamble.class))?;
-        buffer.write_u32(self.preamble.ttl)?;
+        match buffer.write_qname(&self.preamble.name) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.preamble.rtype.to_u16()) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(QRClass::to_u16(&self.preamble.class)) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u32(self.preamble.ttl) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let len_pos = buffer.pos();
-        buffer.write_u16(0)?; // Placeholder for length
+        match buffer.write_u16(0) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        }; // Placeholder for length
 
         let start_pos = buffer.pos();
-        buffer.write_u16(self.priority)?;
-        buffer.write_u16(self.weight)?;
-        buffer.write_u16(self.port)?;
-        buffer.write_qname(&self.target)?;
+        match buffer.write_u16(self.priority) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.weight) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.port) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_qname(&self.target) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let end_pos = buffer.pos();
         let rdlength = end_pos - start_pos;
-        buffer.seek(len_pos)?;
-        buffer.write_u16(rdlength as u16)?;
-        buffer.seek(end_pos)?;
+        match buffer.seek(len_pos) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(rdlength as u16) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.seek(end_pos) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         Ok(())
     }
 }

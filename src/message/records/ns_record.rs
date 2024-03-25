@@ -10,28 +10,58 @@ pub struct DNSNSRecord {
 impl DNSRecordTrait for DNSNSRecord {
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, _data_len: u16) -> Result<DNSRecord, std::io::Error> {
         let mut ns_domain: String = String::new();
-        buffer.read_qname(&mut ns_domain)?;
+        match buffer.read_qname(&mut ns_domain) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(DNSRecord::NS(DNSNSRecord::new(domain,qclass, ttl, ns_domain)))
     }
 
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        buffer.write_qname(&self.preamble.name)?;
-        buffer.write_u16(self.preamble.rtype.to_u16())?;
-        buffer.write_u16(QRClass::to_u16(&self.preamble.class))?;
-        buffer.write_u32(self.preamble.ttl)?;
+        match buffer.write_qname(&self.preamble.name) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.preamble.rtype.to_u16()) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(QRClass::to_u16(&self.preamble.class)) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u32(self.preamble.ttl) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
     
         let len_pos = buffer.pos(); // Remember the position to write the length later
-        buffer.write_u16(0)?; // Placeholder for RDLENGTH
+        match buffer.write_u16(0) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        }; // Placeholder for RDLENGTH
     
         let start_pos = buffer.pos(); // Start position of RDATA
-        buffer.write_qname(&self.rdata)?; // Write the domain name of the name server
+        match buffer.write_qname(&self.rdata) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        }; // Write the domain name of the name server
         let end_pos = buffer.pos(); // End position of RDATA
     
         let rdlength = end_pos - start_pos; // Calculate RDLENGTH
-        buffer.seek(len_pos)?; // Go back to write RDLENGTH
-        buffer.write_u16(rdlength as u16)?;
-        buffer.seek(end_pos)?; // Move back to the end of the RDATA
+        match buffer.seek(len_pos) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        }; // Go back to write RDLENGTH
+        match buffer.write_u16(rdlength as u16) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.seek(end_pos) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        }; // Move back to the end of the RDATA
         Ok(())
     }
 }

@@ -9,7 +9,10 @@ pub struct DNSARecord {
 
 impl DNSRecordTrait for DNSARecord {
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, _data_len: u16) -> Result<DNSRecord, std::io::Error>{
-        let raw_addr: u32 = buffer.read_u32()?;
+        let raw_addr: u32 = match buffer.read_u32() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let addr: Ipv4Addr = Ipv4Addr::new(
             ((raw_addr >> 24) & 0xFF) as u8,
             ((raw_addr >> 16) & 0xFF) as u8,
@@ -20,16 +23,34 @@ impl DNSRecordTrait for DNSARecord {
         Ok(DNSRecord::A(DNSARecord::new(domain,qclass,ttl,addr)))
     }   
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        buffer.write_qname(&self.preamble.name)?;
-        buffer.write_u16(self.preamble.rtype.to_u16())?;
-        buffer.write_u16(QRClass::to_u16(&self.preamble.class))?;
-        buffer.write_u32(self.preamble.ttl)?;
-        buffer.write_u16(self.preamble.rdlength)?;
+        match buffer.write_qname(&self.preamble.name) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.preamble.rtype.to_u16()) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(QRClass::to_u16(&self.preamble.class)) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u32(self.preamble.ttl) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.preamble.rdlength) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         
         // Write the IPv4 address
         let octets = self.rdata.octets();
         for octet in octets.iter() {
-            buffer.write_u8(*octet)?;
+            match buffer.write_u8(*octet) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
         Ok(())
     }

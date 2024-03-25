@@ -9,12 +9,15 @@ pub struct DNSUNKNOWNRecord {
 impl DNSRecordTrait for DNSUNKNOWNRecord {
     
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, data_len: u16) -> Result<DNSRecord, std::io::Error> {
-        buffer.step(data_len as usize)?;
+        match buffer.step(data_len as usize) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         Ok(DNSRecord::UNKNOWN(DNSUNKNOWNRecord::new(domain,qclass, ttl,"".to_string())))
     }
     
     fn write(&self, _buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        let e = std::io::Error::new(std::io::ErrorKind::NotFound,format!("Failed to write DNS Record invalid input data:"));
+        let e = std::io::Error::new(std::io::ErrorKind::NotFound,"Failed to write DNS Record invalid input data:");
         return Err(e);
     }
 }

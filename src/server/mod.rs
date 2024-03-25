@@ -14,7 +14,10 @@ pub struct DNSResolver {
 impl DNSResolver {
     pub fn new(bind_address:Ipv4Addr, port:u16) -> Result<Self, std::io::Error> {
         let socket_addr:SocketAddrV4 = SocketAddrV4::new(bind_address,port);
-        let socket = UdpSocket::bind(socket_addr)?;
+        let socket = match UdpSocket::bind(socket_addr) {
+            Ok(s) => s,
+            Err(e) => return Err(e)
+        };
         Ok(Self { socket })
     }
 
@@ -26,11 +29,20 @@ impl DNSResolver {
         packet.question.questions.push(DNSQuestion::new(qname.to_string(), qtype, qclass));
 
         let mut req_buffer = BytePacketBuffer::new();
-        packet.write(&mut req_buffer)?;
-        self.socket.send_to(&req_buffer.buf[0..req_buffer.pos], server)?;
+        match packet.write(&mut req_buffer) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.socket.send_to(&req_buffer.buf[0..req_buffer.pos], server) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         let mut res_buffer = BytePacketBuffer::new();
-        self.socket.recv_from(&mut res_buffer.buf)?;
+        match self.socket.recv_from(&mut res_buffer.buf) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         DNSPacket::from_buffer(&mut res_buffer)
     }
@@ -45,7 +57,10 @@ impl DNSResolver {
             println!("Attempting lookup of {:?} {} with server {:?}", qtype, qname, server.0);
 
             // Send query to the current server
-            let response = self.lookup(qname, qtype, QRClass::IN, server)?;
+            let response = match self.lookup(qname, qtype, QRClass::IN, server) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
 
             // Check for answers in the response; if found, return the response
             if !response.answer.answers.is_empty() && response.header.rcode == RCode::NoError {
@@ -95,8 +110,14 @@ impl DNSResolver {
     pub fn handle_query(&self) -> Result<(), std::io::Error> {
         let mut req_buffer = BytePacketBuffer::new();
         // Use the DNSResolver's own socket to receive data
-        let (_, src) = self.socket.recv_from(&mut req_buffer.buf)?;
-        let mut request = DNSPacket::from_buffer(&mut req_buffer)?;
+        let (_, src) = match self.socket.recv_from(&mut req_buffer.buf) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        let mut request = match DNSPacket::from_buffer(&mut req_buffer) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         let mut response_packet = DNSPacket::new();
         response_packet.header.id = request.header.id;
@@ -135,11 +156,17 @@ impl DNSResolver {
 
         // Prepare the response and use the DNSResolver's own socket to send it
         let mut res_buffer = BytePacketBuffer::new();
-        response_packet.write(&mut res_buffer)?;
+        match response_packet.write(&mut res_buffer) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let len = res_buffer.pos();
         let data = res_buffer.get_byte_range(0, len)?;
 
-        self.socket.send_to(data, src)?;
+        match self.socket.send_to(data, src) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }

@@ -120,18 +120,35 @@ impl DNSQuestion {
             qclass 
         }}
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
-        buffer.read_qname(&mut self.qname)?;
-        self.qtype = QRType::from_u16(buffer.read_u16()?); // qtype
-        let _ = buffer.read_u16()?; // class
-
+        match buffer.read_qname(&mut self.qname) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        self.qtype = QRType::from_u16(match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        });
+        let _ = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         Ok(())
     }
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
-        buffer.write_qname(&self.qname)?;
+        match buffer.write_qname(&self.qname) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         let typenum = self.qtype.to_u16();
-        buffer.write_u16(typenum)?;
-        buffer.write_u16(1)?;
+        match buffer.write_u16(typenum) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(1) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }
@@ -216,24 +233,39 @@ impl DNSPacket {
     }
     pub fn from_buffer(buffer: &mut BytePacketBuffer) -> Result<DNSPacket,std::io::Error> {
         let mut result:DNSPacket = DNSPacket::new();
-        result.header.read(buffer)?;
+        match result.header.read(buffer) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         for _ in 0..result.header.qdcount {
             let mut question = DNSQuestion::new("".to_string(), QRType::UNKNOWN(0),QRClass::ANY);
-            question.read(buffer)?;
+            match question.read(buffer) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
             result.question.add_question(question);
         }
 
         for _ in 0..result.header.ancount {
-            let rec = DNSRecord::read(buffer)?;
+            let rec = match DNSRecord::read(buffer) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
             result.answer.add_answer(rec);
         }
         for _ in 0..result.header.nscount {
-            let rec = DNSRecord::read(buffer)?;
+            let rec = match DNSRecord::read(buffer) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
             result.authority.add_record(rec);
         }
         for _ in 0..result.header.arcount {
-            let rec = DNSRecord::read(buffer).unwrap();
+            let rec = match DNSRecord::read(buffer) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
             result.additional.add_record(rec);
         }
 
@@ -245,19 +277,34 @@ impl DNSPacket {
         self.header.nscount = self.authority.records.len() as u16;
         self.header.arcount = self.additional.records.len() as u16;
 
-        self.header.write(buffer)?;
+        match self.header.write(buffer) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         for question in &self.question.questions {
-            question.write(buffer)?;
+            match question.write(buffer){
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
         for rec in &self.answer.answers {
-            rec.write(buffer)?;
+            match rec.write(buffer) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
         for rec in &self.authority.records {
-            rec.write(buffer)?;
+            match rec.write(buffer) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
         for rec in &self.additional.records {
-            rec.write(buffer)?;
+            match rec.write(buffer){
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
 
         Ok(())

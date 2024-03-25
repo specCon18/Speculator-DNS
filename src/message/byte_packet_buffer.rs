@@ -71,39 +71,104 @@ impl BytePacketBuffer {
 
     /// Read two bytes, stepping two steps forward
     pub fn read_u16(&mut self) -> Result<u16,std::io::Error> {
-        let res = ((self.read()? as u16) << 8) | (self.read()? as u16);
+        let res = ((match self.read() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        } as u16) << 8) | (match self.read() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        } as u16);
 
         Ok(res)
     }
 
     /// Read four bytes, stepping four steps forward
     pub fn read_u32(&mut self) -> Result<u32,std::io::Error> {
-        let res = ((self.read()? as u32) << 24)
-            | ((self.read()? as u32) << 16)
-            | ((self.read()? as u32) << 8)
-            | ((self.read()? as u32) << 0);
+        let res = ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u32) << 24)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u32) << 16)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u32) << 8)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u32) << 0);
 
         Ok(res)
     }
     /// Read sixteen bytes, stepping sixteen steps forward
     pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
-        let res = ((self.read()? as u128) << 120)
-            | ((self.read()? as u128) << 112)
-            | ((self.read()? as u128) << 104)
-            | ((self.read()? as u128) << 96)
-            | ((self.read()? as u128) << 88)
-            | ((self.read()? as u128) << 80)
-            | ((self.read()? as u128) << 72)
-            | ((self.read()? as u128) << 64)
-            | ((self.read()? as u128) << 56)
-            | ((self.read()? as u128) << 48)
-            | ((self.read()? as u128) << 40)
-            | ((self.read()? as u128) << 32)
-            | ((self.read()? as u128) << 24)
-            | ((self.read()? as u128) << 16)
-            | ((self.read()? as u128) << 8)
-            | ((self.read()? as u128) << 0);
-    
+        let res = ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 120)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 112)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 104)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 96)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 88)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 80)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 72)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 64)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 56)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 48)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 40)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 32)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 24)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 16)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 8)
+            | ((match self.read() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as u128) << 0);
         Ok(res)
     }
 
@@ -139,7 +204,10 @@ impl BytePacketBuffer {
 
             // At this point, we're always at the beginning of a label. Recall
             // that labels start with a length byte.
-            let len = self.get_byte(pos)?;
+            let len = match self.get_byte(pos) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
 
             // If len has the two most significant bit are set, it represents a
             // jump to some other offset in the packet:
@@ -147,12 +215,18 @@ impl BytePacketBuffer {
                 // Update the buffer position to a point past the current
                 // label. We don't need to touch it any further.
                 if !jumped {
-                    self.seek(pos + 2)?;
+                    match self.seek(pos + 2) {
+                        Ok(s) => s,
+                        Err(e) => return Err(e),
+                    };
                 }
 
                 // Read another byte, calculate offset and perform the jump by
                 // updating our local position variable
-                let b2 = self.get_byte(pos + 1)? as u16;
+                let b2 = match self.get_byte(pos + 1) {
+                    Ok(s) => s,
+                    Err(e) => return Err(e),
+                } as u16;
                 let offset = (((len as u16) ^ 0xC0) << 8) | b2;
                 pos = offset as usize;
 
@@ -179,7 +253,10 @@ impl BytePacketBuffer {
 
                 // Extract the actual ASCII bytes for this label and append them
                 // to the output buffer.
-                let str_buffer = self.get_byte_range(pos, len as usize)?;
+                let str_buffer = match self.get_byte_range(pos, len as usize) {
+                    Ok(s) => s,
+                    Err(e) => return Err(e),
+                };
                 outstr.push_str(&String::from_utf8_lossy(str_buffer).to_lowercase());
 
                 delim = ".";
@@ -190,7 +267,10 @@ impl BytePacketBuffer {
         }
 
         if !jumped {
-            self.seek(pos)?;
+            match self.seek(pos) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
 
         Ok(())
@@ -208,46 +288,115 @@ impl BytePacketBuffer {
 
     /// Write a single byte and move the position one step forward
     pub fn write_u8(&mut self, val: u8) -> Result<(),std::io::Error> {
-        self.write(val)?;
+        match self.write(val) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }
 
     /// Write two bytes and move the position two step forward
     pub fn write_u16(&mut self, val: u16) -> Result<(),std::io::Error> {
-        self.write((val >> 8) as u8)?;
-        self.write((val & 0xFF) as u8)?;
+        match self.write((val >> 8) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write((val & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }
 
     /// Write two bytes and move the position two step forward
     pub fn write_u32(&mut self, val: u32) -> Result<(),std::io::Error> {
-        self.write(((val >> 24) & 0xFF) as u8)?;
-        self.write(((val >> 16) & 0xFF) as u8)?;
-        self.write(((val >> 8) & 0xFF) as u8)?;
-        self.write((val & 0xFF) as u8)?;
+        match self.write(((val >> 24) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 16) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 8) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write((val & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         Ok(())
     }
 
     /// Write sixteen bytes and move the position sixteen steps forward
     pub fn write_u128(&mut self, val: u128) -> Result<(), std::io::Error> {
-        self.write(((val >> 120) & 0xFF) as u8)?;
-        self.write(((val >> 112) & 0xFF) as u8)?;
-        self.write(((val >> 104) & 0xFF) as u8)?;
-        self.write(((val >> 96) & 0xFF) as u8)?;
-        self.write(((val >> 88) & 0xFF) as u8)?;
-        self.write(((val >> 80) & 0xFF) as u8)?;
-        self.write(((val >> 72) & 0xFF) as u8)?;
-        self.write(((val >> 64) & 0xFF) as u8)?;
-        self.write(((val >> 56) & 0xFF) as u8)?;
-        self.write(((val >> 48) & 0xFF) as u8)?;
-        self.write(((val >> 40) & 0xFF) as u8)?;
-        self.write(((val >> 32) & 0xFF) as u8)?;
-        self.write(((val >> 24) & 0xFF) as u8)?;
-        self.write(((val >> 16) & 0xFF) as u8)?;
-        self.write(((val >> 8) & 0xFF) as u8)?;
-        self.write((val & 0xFF) as u8)?;
+        match self.write(((val >> 120) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 112) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 104) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 96) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 88) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 80) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 72) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 64) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 56) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 48) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 40) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 32) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 24) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 16) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write(((val >> 8) & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match self.write((val & 0xFF) as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }
@@ -264,13 +413,22 @@ impl BytePacketBuffer {
                 return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Single label exceeds 63 characters of length"));
             }
 
-            self.write_u8(len as u8)?;
+            match self.write_u8(len as u8) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
             for b in label.as_bytes() {
-                self.write_u8(*b)?;
+                match self.write_u8(*b) {
+                    Ok(s) => s,
+                    Err(e) => return Err(e),
+                }
             }
         }
 
-        self.write_u8(0)?;
+        match self.write_u8(0) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }

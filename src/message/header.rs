@@ -234,42 +234,101 @@ impl DNSHeaderSection {
         DNSHeaderSection { id, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, qdcount, ancount, nscount, arcount }
     }
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        self.id = buffer.read_u16()?;
+        self.id = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
-        let flags = buffer.read_u16()?;
+        let flags = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let a = (flags >> 8) as u8;
         let b = (flags & 0xFF) as u8;
 
         // Convert boolean to u8, then use from_u8 for enum conversion
-        self.rd = RDFlag::from_u8(((a & (1 << 0)) > 0) as u8).unwrap();
-        self.tc = TCFlag::from_u8(((a & (1 << 1)) > 0) as u8).unwrap();
-        self.aa = AAFlag::from_u8(((a & (1 << 2)) > 0) as u8).unwrap();
+        self.rd = match RDFlag::from_u8(((a & (1 << 0)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"rdflag is not a boolean")),
+        };
+        
+        self.tc = match TCFlag::from_u8(((a & (1 << 1)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"tcflag is not a boolean")),
+        };
+
+        self.aa = match AAFlag::from_u8(((a & (1 << 2)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"aaflag is not a boolean")),
+        };
 
         // Directly extract the value for opcode, mask with 0x0F to get the correct value, then convert
-        self.opcode = OpCode::from_u8((a >> 3) & 0x0F).unwrap();
+        self.opcode = match OpCode::from_u8((a >> 3) & 0x0F) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"OpCode is not one of [(QUERY),(IQUERY, deprecated),(STATUS),(NOTIFY, RFC 1996),(UPDATE, RFC 2136)]")),
+        };
 
         // Convert boolean to u8, then use from_u8 for enum conversion
-        self.qr = QRFlag::from_u8(((a & (1 << 7)) > 0) as u8).unwrap();
+        self.qr = match QRFlag::from_u8(((a & (1 << 7)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"qrflag is not a boolean")),
+        };
 
         // Directly extract the value for rcode, mask with 0x0F to get the correct value, then convert
-        self.rcode = RCode::from_u8(b & 0x0F).unwrap();
+        self.rcode = match RCode::from_u8(b & 0x0F) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"rcode is not one of [NoError,FormErr,ServFail,NXDomain,NotImp,Refused,YXDomain,YXRRSet,NXRRSet,NotAuth,NotZone]")),
+        };
 
         // Convert boolean to u8, then use from_u8 for enum conversion for remaining flags
-        self.cd = CDFlag::from_u8(((b & (1 << 4)) > 0) as u8).unwrap();
-        self.ad = ADFlag::from_u8(((b & (1 << 5)) > 0) as u8).unwrap();
-        self.z = ZFlag::from_u8(((b & (1 << 6)) > 0) as u8).unwrap();
-        self.ra = RAFlag::from_u8(((b & (1 << 7)) > 0) as u8).unwrap();
+        self.cd = match CDFlag::from_u8(((b & (1 << 4)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"cdflag is not a boolean")),
+        };
+        
+        self.ad = match ADFlag::from_u8(((b & (1 << 5)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"adflag is not a boolean")),
+        };
+        
+        self.z = match ZFlag::from_u8(((b & (1 << 6)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"zflag is not a boolean")),
+        };
+        
+        self.ra = match RAFlag::from_u8(((b & (1 << 7)) > 0) as u8) {
+            Some(s) => s,
+            None => return Err(std::io::Error::new(std::io::ErrorKind::InvalidData,"raflag is not a boolean")),
+        };
 
         // Continue with buffer reading for counts
-        self.qdcount = buffer.read_u16()?;
-        self.ancount = buffer.read_u16()?;
-        self.nscount = buffer.read_u16()?;
-        self.arcount = buffer.read_u16()?;
+        self.qdcount = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        
+        self.ancount = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        
+        self.nscount = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        
+        self.arcount = match buffer.read_u16() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
-        buffer.write_u16(self.id)?;
+        match buffer.write_u16(self.id) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         buffer.write_u8(
             (self.rd as u8)
                 | ((self.tc as u8) << 1)
@@ -286,10 +345,22 @@ impl DNSHeaderSection {
                 | ((self.ra as u8) << 7),
         )?;
 
-        buffer.write_u16(self.qdcount)?;
-        buffer.write_u16(self.ancount)?;
-        buffer.write_u16(self.nscount)?;
-        buffer.write_u16(self.arcount)?;
+        match buffer.write_u16(self.qdcount) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.ancount) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.nscount) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.arcount) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         Ok(())
     }

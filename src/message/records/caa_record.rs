@@ -10,19 +10,31 @@ pub struct DNSCAARecord {
 
 impl DNSRecordTrait for DNSCAARecord {
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, data_len: u16) -> Result<DNSRecord, std::io::Error> {
-        let flags: u8 = buffer.read_u8()?;
-        let tag_len: u8 = buffer.read_u8()?;
+        let flags: u8 = match buffer.read_u8() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        let tag_len: u8 = match buffer.read_u8() {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         let mut i:u16 = 0;
         let mut tag: String = String::new();
         while i as u8 <= tag_len {                    
-            tag.push(buffer.read_u8()? as char);
+            tag.push(match buffer.read_u8() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as char);
             i += 1;
         }
         i = 0;
         let value_len = data_len - tag_len as u16;
         let value: String = String::new();
         while i <= value_len {                    
-            tag.push(buffer.read_u8()? as char);
+            tag.push(match buffer.read_u8() {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            } as char);
             i += 1;
         }
         let rdata:(u8,String,String) = (flags,tag,value);
@@ -30,21 +42,48 @@ impl DNSRecordTrait for DNSCAARecord {
     }
 
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
-        buffer.write_qname(&self.preamble.name)?;
-        buffer.write_u16(self.preamble.rtype.to_u16())?;
-        buffer.write_u16(QRClass::to_u16(&self.preamble.class))?;
-        buffer.write_u32(self.preamble.ttl)?;
+        match buffer.write_qname(&self.preamble.name) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(self.preamble.rtype.to_u16()) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u16(QRClass::to_u16(&self.preamble.class)) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u32(self.preamble.ttl) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         let data_len = 1 + 1 + self.tag.len() + self.value.len();
-        buffer.write_u16(data_len as u16)?;
+        match buffer.write_u16(data_len as u16) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
                 
-        buffer.write_u8(self.flags)?;
-        buffer.write_u8(self.tag.len() as u8)?;
+        match buffer.write_u8(self.flags) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        match buffer.write_u8(self.tag.len() as u8) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
         for byte in self.tag.as_bytes() {
-            buffer.write_u8(*byte)?;
+            match buffer.write_u8(*byte) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
         for byte in self.value.as_bytes() {
-            buffer.write_u8(*byte)?;
+            match buffer.write_u8(*byte) {
+                Ok(s) => s,
+                Err(e) => return Err(e),
+            };
         }
         Ok(())
     }
