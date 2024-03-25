@@ -42,19 +42,19 @@ impl DNSRecordTrait for DNSPTRRecord {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
-        let len_pos = buffer.pos();
+        let len_pos:usize = buffer.pos();
         match buffer.write_u16(0) {
             Ok(s) => s,
             Err(e) => return Err(e),
         }; // Placeholder for length
 
-        let start_pos = buffer.pos();
+        let start_pos:usize = buffer.pos();
         match buffer.write_qname(&self.ptrdname) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
-        let end_pos = buffer.pos();
-        let rdlength = end_pos - start_pos;
+        let end_pos:usize = buffer.pos();
+        let rdlength:usize = end_pos - start_pos;
         match buffer.seek(len_pos) {
             Ok(s) => s,
             Err(e) => return Err(e),

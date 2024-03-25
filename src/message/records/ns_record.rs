@@ -45,20 +45,20 @@ impl DNSRecordTrait for DNSNSRecord {
             Err(e) => return Err(e),
         };
     
-        let len_pos = buffer.pos(); // Remember the position to write the length later
+        let len_pos:usize = buffer.pos(); // Remember the position to write the length later
         match buffer.write_u16(0) {
             Ok(s) => s,
             Err(e) => return Err(e),
         }; // Placeholder for RDLENGTH
     
-        let start_pos = buffer.pos(); // Start position of RDATA
+        let start_pos:usize = buffer.pos(); // Start position of RDATA
         match buffer.write_qname(&self.rdata) {
             Ok(s) => s,
             Err(e) => return Err(e),
         }; // Write the domain name of the name server
-        let end_pos = buffer.pos(); // End position of RDATA
+        let end_pos:usize = buffer.pos(); // End position of RDATA
     
-        let rdlength = end_pos - start_pos; // Calculate RDLENGTH
+        let rdlength:usize = end_pos - start_pos; // Calculate RDLENGTH
         match buffer.seek(len_pos) {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -77,14 +77,13 @@ impl DNSRecordTrait for DNSNSRecord {
 
 impl DNSNSRecord {
     fn new(name: String, class: QRClass, ttl: u32, ns_domain:String) -> Self {
-        let rdlength = ns_domain.len() as u16; // Length of the domain name in bytes
         DNSNSRecord {
             preamble: DNSRecordPreamble {
                 name,
                 rtype: QRType::NS, // The type code for an NS record is 2
                 class, // The class for Internet is 1 (IN)
                 ttl,
-                rdlength,
+                rdlength:ns_domain.len() as u16 // Length of the domain name in bytes
             },
             rdata: ns_domain,
         }        

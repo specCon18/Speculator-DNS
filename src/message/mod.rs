@@ -59,7 +59,7 @@ impl QRType {
 
 impl std::fmt::Display for QRType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let as_str = match *self {
+        let as_str: &str = match *self {
             QRType::A => "A (IPv4 address)",
             QRType::NS => "NS (Name Server)",
             QRType::CNAME => "CNAME (Canonical Name)",
@@ -271,6 +271,7 @@ impl DNSPacket {
 
         Ok(result)
     }
+    
     pub fn write(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
         self.header.qdcount = self.question.questions.len() as u16;
         self.header.ancount = self.answer.answers.len() as u16;
@@ -309,30 +310,33 @@ impl DNSPacket {
 
         Ok(())
     }
+    
     pub fn get_random_a(&self) -> Option<Ipv4Addr> {
         self.answer.answers
             .iter()
-            .filter_map(|record| match record {
+            .filter_map(|record:&DNSRecord| match record {
                 DNSRecord::A(a_record) => Some(a_record.rdata),
                 _ => None,
             })
             .next()
     }
+    
     pub fn get_ns<'a>(&'a self, qname: &'a str) -> impl Iterator<Item = (&'a str, &'a str)> {
         self.authority.records
             .iter()
-            .filter_map(|record| match record {
+            .filter_map(|record:&DNSRecord| match record {
                 DNSRecord::NS(ns_record) => Some((ns_record.preamble.name.as_str(), ns_record.rdata.as_str())),
                 _ => None,
             })
             .filter(move |(domain, _)| qname.ends_with(*domain))
     }
+    
     pub fn get_resolved_ns(&self, qname: &str) -> Option<Ipv4Addr> {
         self.get_ns(qname)
             .flat_map(|(_, host)| {
                 self.additional.records
                     .iter()
-                    .filter_map(|record| match record {
+                    .filter_map(|record:&DNSRecord| match record {
                         DNSRecord::A(a_record) if a_record.preamble.name == *host => Some(a_record.rdata),
                         _ => None,
                     })

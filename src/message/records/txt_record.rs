@@ -12,7 +12,7 @@ use crate::message::{
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSTXTRecord {
     pub preamble: DNSRecordPreamble,
-    pub text: String, // Text data
+    pub text: String
 }
 
 impl DNSRecordTrait for DNSTXTRecord {

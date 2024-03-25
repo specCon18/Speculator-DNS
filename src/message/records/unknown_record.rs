@@ -34,11 +34,9 @@ impl DNSRecordTrait for DNSUNKNOWNRecord {
 impl DNSUNKNOWNRecord {
     // Constructor for creating a new DNSUNKNOWNRecord
     fn new(name: String, class:QRClass, ttl: u32, rdata: String) -> Self {
-        let _ = rdata;
-        let preamble = DNSRecordPreamble::new(name, QRType::UNKNOWN(0), class, ttl, 0);
         DNSUNKNOWNRecord {
-            preamble,
-            rdata:None,
+            preamble:DNSRecordPreamble::new(name, QRType::UNKNOWN(0), class, ttl, 0),
+            rdata: Some(rdata),
         }
     }
 }

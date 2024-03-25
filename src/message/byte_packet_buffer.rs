@@ -71,7 +71,7 @@ impl BytePacketBuffer {
 
     /// Read two bytes, stepping two steps forward
     pub fn read_u16(&mut self) -> Result<u16,std::io::Error> {
-        let res = ((match self.read() {
+        let res:u16 = ((match self.read() {
             Ok(s) => s,
             Err(e) => return Err(e),
         } as u16) << 8) | (match self.read() {
@@ -84,7 +84,7 @@ impl BytePacketBuffer {
 
     /// Read four bytes, stepping four steps forward
     pub fn read_u32(&mut self) -> Result<u32,std::io::Error> {
-        let res = ((match self.read() {
+        let res:u32 = ((match self.read() {
                 Ok(s) => s,
                 Err(e) => return Err(e),
             } as u32) << 24)
@@ -105,7 +105,7 @@ impl BytePacketBuffer {
     }
     /// Read sixteen bytes, stepping sixteen steps forward
     pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
-        let res = ((match self.read() {
+        let res:u128 = ((match self.read() {
                 Ok(s) => s,
                 Err(e) => return Err(e),
             } as u128) << 120)
@@ -178,22 +178,23 @@ impl BytePacketBuffer {
     /// Will take something like [3]www[6]google[3]com[0] and append
     /// www.google.com to outstr.
     pub fn read_qname(&mut self, outstr: &mut String) -> Result<(),std::io::Error> {
+
         // Since we might encounter jumps, we'll keep track of our position
         // locally as opposed to using the position within the struct. This
         // allows us to move the shared position to a point past our current
         // qname, while keeping track of our progress on the current qname
         // using this variable.
-        let mut pos = self.pos();
+        let mut pos:usize = self.pos();
 
         // track whether or not we've jumped
-        let mut jumped = false;
-        let max_jumps = 5;
-        let mut jumps_performed = 0;
+        let mut jumped:bool = false;
+        let max_jumps:i32 = 5;
+        let mut jumps_performed:i32 = 0;
 
         // Our delimiter which we append for each label. Since we don't want a
         // dot at the beginning of the domain name we'll leave it empty for now
         // and set it to "." at the end of the first iteration.
-        let mut delim = "";
+        let mut delim:&str = "";
         loop {
             // Dns Packets are untrusted data, so we need to be paranoid. Someone
             // can craft a packet with a cycle in the jump instructions. This guards
@@ -204,8 +205,8 @@ impl BytePacketBuffer {
 
             // At this point, we're always at the beginning of a label. Recall
             // that labels start with a length byte.
-            let len = match self.get_byte(pos) {
-                Ok(s) => s,
+            let len:u16 = match self.get_byte(pos) {
+                Ok(s) => s as u16,
                 Err(e) => return Err(e),
             };
 
@@ -223,11 +224,12 @@ impl BytePacketBuffer {
 
                 // Read another byte, calculate offset and perform the jump by
                 // updating our local position variable
-                let b2 = match self.get_byte(pos + 1) {
+                let b2:u16 = match self.get_byte(pos + 1) {
                     Ok(s) => s,
                     Err(e) => return Err(e),
                 } as u16;
-                let offset = (((len as u16) ^ 0xC0) << 8) | b2;
+                
+                let offset:u16 = (((len as u16) ^ 0xC0) << 8) | b2;
                 pos = offset as usize;
 
                 // Indicate that a jump was performed.

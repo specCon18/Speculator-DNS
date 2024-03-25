@@ -46,19 +46,19 @@ impl DNSRecordTrait for DNSCNAMERecord {
             Err(e) => return Err(e),
         };
         // Placeholder position for length
-        let len_pos = buffer.pos();
+        let len_pos:usize = buffer.pos();
         match buffer.write_u16(0) {
             Ok(s) => s,
             Err(e) => return Err(e),
         }; // Placeholder for length
 
-        let start_pos = buffer.pos();
+        let start_pos:usize = buffer.pos();
         match buffer.write_qname(&self.rdata) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
-        let end_pos = buffer.pos();
-        let rdlength = end_pos - start_pos;
+        let end_pos:usize = buffer.pos();
+        let rdlength:usize = end_pos - start_pos;
         match buffer.seek(len_pos) {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -77,14 +77,13 @@ impl DNSRecordTrait for DNSCNAMERecord {
 
 impl DNSCNAMERecord {
     fn new(name: String, class: QRClass, ttl: u32, canonical_name:String) -> Self {
-        let rdlength = canonical_name.len() as u16; // Length of the canonical name in bytes
         DNSCNAMERecord {
             preamble: DNSRecordPreamble {
                 name,
                 rtype: QRType::CNAME, // The type code for a CNAME record is 5
                 class, // The class for Internet is 1 (IN)
                 ttl,
-                rdlength, // Set based on the length of the canonical name
+                rdlength:canonical_name.len() as u16, // Length of the canonical name in bytes
             },
             rdata: canonical_name,
         }

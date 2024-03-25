@@ -67,9 +67,8 @@ impl DNSRecordTrait for DNSARecord {
 
 impl DNSARecord {
     fn new(name: String, class: QRClass, ttl: u32, rdata:Ipv4Addr) -> Self {
-        let preamble = DNSRecordPreamble::new(name, QRType::A, class, ttl, 4);
         DNSARecord {
-            preamble,
+            preamble: DNSRecordPreamble::new(name, QRType::A, class, ttl, 4),
             rdata,
         }
     }

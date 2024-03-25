@@ -243,8 +243,8 @@ impl DNSHeaderSection {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
-        let a = (flags >> 8) as u8;
-        let b = (flags & 0xFF) as u8;
+        let a: u8 = (flags >> 8) as u8;
+        let b: u8 = (flags & 0xFF) as u8;
 
         // Convert boolean to u8, then use from_u8 for enum conversion
         self.rd = match RDFlag::from_u8(((a & (1 << 0)) > 0) as u8) {
@@ -325,25 +325,33 @@ impl DNSHeaderSection {
         Ok(())
     }
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
+        
         match buffer.write_u16(self.id) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
-        buffer.write_u8(
+
+        match buffer.write_u8(
             (self.rd as u8)
                 | ((self.tc as u8) << 1)
                 | ((self.aa as u8) << 2)
                 | (OpCode::to_u8(&self.opcode) << 3)
                 | ((self.qr as u8) << 7) as u8,
-        )?;
+        ) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
-        buffer.write_u8(
+        match buffer.write_u8(
             (self.rcode as u8)
                 | ((self.cd as u8) << 4)
                 | ((self.ad as u8) << 5)
                 | ((self.z as u8) << 6)
                 | ((self.ra as u8) << 7),
-        )?;
+        )  {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
 
         match buffer.write_u16(self.qdcount) {
             Ok(s) => s,

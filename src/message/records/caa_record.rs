@@ -37,7 +37,7 @@ impl DNSRecordTrait for DNSCAARecord {
             i += 1;
         }
         i = 0;
-        let value_len = data_len - tag_len as u16;
+        let value_len:u16 = data_len - tag_len as u16;
         let value: String = String::new();
         while i <= value_len {                    
             tag.push(match buffer.read_u8() {
@@ -68,7 +68,7 @@ impl DNSRecordTrait for DNSCAARecord {
             Err(e) => return Err(e),
         };
 
-        let data_len = 1 + 1 + self.tag.len() + self.value.len();
+        let data_len:usize = 1 + 1 + self.tag.len() + self.value.len();
         match buffer.write_u16(data_len as u16) {
             Ok(s) => s,
             Err(e) => return Err(e),

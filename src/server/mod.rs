@@ -8,14 +8,17 @@ use crate::message::{
     QRType
 };
 
+type Port = u16;
+
 pub struct DNSResolver {
-    socket: UdpSocket,
+    socket: UdpSocket
 }
 
 impl DNSResolver {
-    pub fn new(bind_address:Ipv4Addr, port:u16) -> Result<Self, std::io::Error> {
-        let socket_addr:SocketAddrV4 = SocketAddrV4::new(bind_address,port);
-        let socket = match UdpSocket::bind(socket_addr) {
+
+    pub fn new(ip:Ipv4Addr,port:Port) -> Result<Self, std::io::Error> {
+        let socket_address:SocketAddrV4 = SocketAddrV4::new(ip,port);
+        let socket = match UdpSocket::bind(socket_address) {
             Ok(s) => s,
             Err(e) => return Err(e)
         };
@@ -23,13 +26,14 @@ impl DNSResolver {
     }
 
     pub fn lookup(&self, qname: &str, qtype: QRType, qclass: QRClass, server: (Ipv4Addr, u16)) -> Result<DNSPacket, std::io::Error> {
-        let mut packet = DNSPacket::new();
-        packet.header.id = 6666; // Consider generating a unique ID for each query
+        let mut packet: DNSPacket = DNSPacket::new();
+        // TODO: Generate a unique ID for each query
+        packet.header.id = 6666; 
         packet.header.qdcount = 1;
         packet.header.rd = RDFlag::NonDesired;
         packet.question.questions.push(DNSQuestion::new(qname.to_string(), qtype, qclass));
 
-        let mut req_buffer = BytePacketBuffer::new();
+        let mut req_buffer:BytePacketBuffer = BytePacketBuffer::new();
         match packet.write(&mut req_buffer) {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -39,7 +43,7 @@ impl DNSResolver {
             Err(e) => return Err(e),
         };
 
-        let mut res_buffer = BytePacketBuffer::new();
+        let mut res_buffer:BytePacketBuffer = BytePacketBuffer::new();
         match self.socket.recv_from(&mut res_buffer.buf) {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -48,7 +52,6 @@ impl DNSResolver {
         DNSPacket::from_buffer(&mut res_buffer)
     }
 
-    // Updated recursive_lookup to be non-static and use &self
     fn recursive_lookup(&self, qname: &str, qtype: QRType) -> Result<DNSPacket, std::io::Error> {
         // Initial DNS server to start the recursive search
         // In a full implementation, this would start at a root server
@@ -58,7 +61,7 @@ impl DNSResolver {
             println!("Attempting lookup of {:?} {} with server {:?}", qtype, qname, server.0);
 
             // Send query to the current server
-            let response = match self.lookup(qname, qtype, QRClass::IN, server) {
+            let response:DNSPacket = match self.lookup(qname, qtype, QRClass::IN, server) {
                 Ok(s) => s,
                 Err(e) => return Err(e),
             };
@@ -109,18 +112,21 @@ impl DNSResolver {
     
     /// Handle a single incoming packet using the resolver's socket.
     pub fn handle_query(&self) -> Result<(), std::io::Error> {
-        let mut req_buffer = BytePacketBuffer::new();
+
+        let mut req_buffer: BytePacketBuffer = BytePacketBuffer::new();
+
         // Use the DNSResolver's own socket to receive data
         let (_, src) = match self.socket.recv_from(&mut req_buffer.buf) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
+
         let mut request = match DNSPacket::from_buffer(&mut req_buffer) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
-        let mut response_packet = DNSPacket::new();
+        let mut response_packet: DNSPacket = DNSPacket::new();
         response_packet.header.id = request.header.id;
         response_packet.header.rd = RDFlag::Desired;
         response_packet.header.ra = RAFlag::Available;
@@ -156,12 +162,12 @@ impl DNSResolver {
         }
 
         // Prepare the response and use the DNSResolver's own socket to send it
-        let mut res_buffer = BytePacketBuffer::new();
+        let mut res_buffer: BytePacketBuffer = BytePacketBuffer::new();
         match response_packet.write(&mut res_buffer) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
-        let len = res_buffer.pos();
+        let len: usize = res_buffer.pos();
         let data = res_buffer.get_byte_range(0, len)?;
 
         match self.socket.send_to(data, src) {
