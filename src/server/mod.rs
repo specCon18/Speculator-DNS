@@ -1,4 +1,15 @@
-use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
+use std::{
+    time::{
+        SystemTime,
+        UNIX_EPOCH
+    },
+    net::{
+        Ipv4Addr,
+        SocketAddrV4,
+        UdpSocket
+    }
+};
+
 use crate::message::{
     byte_packet_buffer::BytePacketBuffer,
     header::{QRFlag, RAFlag, RDFlag,RCode},
@@ -9,13 +20,25 @@ use crate::message::{
 };
 
 type Port = u16;
-
+/// Represents a DNS resolver with capabilities to perform DNS queries using UDP.
 pub struct DNSResolver {
+    /// The UDP socket through which the DNS queries are sent and received.
     socket: UdpSocket
 }
 
 impl DNSResolver {
-
+    /// Constructs a new `DNSResolver` instance bound to the specified IP address and port.
+    ///
+    /// # Arguments
+    ///
+    /// * `ip` - An `Ipv4Addr` representing the IP address to bind the UDP socket to.
+    /// * `port` - A `Port` (u16) representing the port number to bind the UDP socket to.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` which is:
+    /// - `Ok` containing the `DNSResolver` instance if the socket is successfully bound.
+    /// - `Err` containing the `std::io::Error` if the socket fails to bind.
     pub fn new(ip:Ipv4Addr,port:Port) -> Result<Self, std::io::Error> {
         let socket_address:SocketAddrV4 = SocketAddrV4::new(ip,port);
         let socket = match UdpSocket::bind(socket_address) {
@@ -25,10 +48,38 @@ impl DNSResolver {
         Ok(Self { socket })
     }
 
+    /// Generates a pseudo-random packet ID using a simple XOR shift technique.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `u16` representing the generated packet ID.
+    fn generate_packet_id() -> u16{
+        let seed:u64 = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_micros() as u64;
+        // Simple pseudo-random number generation using XOR shift technique.
+        let mut rng:u64 = seed ^ (seed << 21);
+        rng ^= rng >> 35;
+        rng ^= rng << 4;
+        let random_value:u16 = (rng % u16::MAX as u64) as u16;
+        return random_value
+    }
+
+    /// Performs a DNS lookup by sending a query to the specified DNS server and awaiting the response.
+    ///
+    /// # Arguments
+    ///
+    /// * `qname` - A string slice (`&str`) representing the domain name to query.
+    /// * `qtype` - A `QRType` representing the type of the DNS query.
+    /// * `qclass` - A `QRClass` representing the class of the DNS query.
+    /// * `server` - A tuple containing the server's `Ipv4Addr` and port number (`u16`).
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` which is:
+    /// - `Ok` containing the received `DNSPacket` if the query was successful.
+    /// - `Err` containing the `std::io::Error` if there was an error sending or receiving the packet.
     pub fn lookup(&self, qname: &str, qtype: QRType, qclass: QRClass, server: (Ipv4Addr, u16)) -> Result<DNSPacket, std::io::Error> {
         let mut packet: DNSPacket = DNSPacket::new();
-        // TODO: Generate a unique ID for each query
-        packet.header.id = 6666; 
+        packet.header.id = DNSResolver::generate_packet_id();
         packet.header.qdcount = 1;
         packet.header.rd = RDFlag::NonDesired;
         packet.question.questions.push(DNSQuestion::new(qname.to_string(), qtype, qclass));
@@ -52,6 +103,19 @@ impl DNSResolver {
         DNSPacket::from_buffer(&mut res_buffer)
     }
 
+
+    /// Performs a recursive DNS lookup, starting at a predefined root server.
+    ///
+    /// # Arguments
+    ///
+    /// * `qname` - A string slice (`&str`) representing the domain name to recursively resolve.
+    /// * `qtype` - A `QRType` representing the type of the DNS query.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` which is:
+    /// - `Ok` containing the resolved `DNSPacket` if the recursive lookup was successful.
+    /// - `Err` containing the `std::io::Error` if there was an error during the lookup process.
     fn recursive_lookup(&self, qname: &str, qtype: QRType) -> Result<DNSPacket, std::io::Error> {
         // Initial DNS server to start the recursive search
         // In a full implementation, this would start at a root server
@@ -88,6 +152,17 @@ impl DNSResolver {
         }
     }
 
+    /// Finds the next server to query based on NS records from the response packet.
+    ///
+    /// # Arguments
+    ///
+    /// * `response` - A reference to a `DNSPacket` containing the response from a DNS query.
+    ///
+    /// # Returns
+    ///
+    /// Returns an `Option` which is:
+    /// - `Some` containing a tuple of the next server's `Ipv4Addr` and port number if found.
+    /// - `None` if no next server could be resolved.
     fn find_next_server(&self, response: &DNSPacket) -> Option<(Ipv4Addr, u16)> {
         // Iterate over NS records in the Authority section to find the domain name of the nameserver
         for (_ns_domain, ns_host) in response.get_ns("") {
@@ -110,7 +185,13 @@ impl DNSResolver {
         None
     }
     
-    /// Handle a single incoming packet using the resolver's socket.
+    /// Handles a single incoming DNS query packet, processes it, and sends back a response.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Result` which is:
+    /// - `Ok` if the query was successfully processed and a response was sent.
+    /// - `Err` containing the `std::io::Error` if there was an error processing the query or sending the response.
     pub fn handle_query(&self) -> Result<(), std::io::Error> {
 
         let mut req_buffer: BytePacketBuffer = BytePacketBuffer::new();

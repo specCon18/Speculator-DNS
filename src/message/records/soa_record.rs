@@ -9,19 +9,45 @@ use crate::message::{
     DNSRecord
 };
 
+/// Represents a DNS SOA (Start of Authority) record.
+///
+/// SOA records are critical for DNS zone files. They specify foundational information about
+/// the domain, including the primary name server, responsible authority's mailbox, serial number,
+/// and various timing parameters. These records are vital for DNS zone transfers and for maintaining
+/// the domain's integrity.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSSOARecord {
+    /// Common DNS record preamble containing metadata such as the domain name, record type, class, and TTL.
     pub preamble: DNSRecordPreamble,
-    pub mname: String, // Primary name server
-    pub rname: String, // Responsible authority's mailbox
-    pub serial: u32,   // Serial number
-    pub refresh: u32,  // Refresh interval
-    pub retry: u32,    // Retry interval
-    pub expire: u32,   // Expiration limit
-    pub minimum: u32,  // Minimum TTL
+    /// The domain name of the primary name server for the domain.
+    pub mname: String,
+    /// The email address of the responsible person for the domain, with '.' replacing '@'.
+    pub rname: String,
+    /// Serial number of the zone file, used to manage updates.
+    pub serial: u32,
+    /// The time interval (in seconds) before the zone should be refreshed.
+    pub refresh: u32,
+    /// The time interval (in seconds) between retries if the first refresh fails.
+    pub retry: u32,
+    /// The time interval (in seconds) that specifies when the zone data is no longer authoritative.
+    pub expire: u32,
+    /// The minimum TTL (in seconds) to be exported with any resource record from this zone.
+    pub minimum: u32
 }
 
 impl DNSRecordTrait for DNSSOARecord {
+    /// Reads a DNS SOA record from the provided byte buffer and constructs a `DNSSOARecord` instance.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer` from which the record data will be read.
+    /// - `domain`: The domain name associated with the record.
+    /// - `qclass`: The class of the DNS query, typically `IN` for internet.
+    /// - `ttl`: The Time To Live (TTL) value for the DNS record.
+    /// - `_data_len`: The length of the data section of the record, not directly used here.
+    ///
+    /// # Returns
+    /// - `Ok(DNSRecord)` containing the newly constructed `DNSSOARecord`.
+    /// - `Err(std::io::Error)` if there is an error reading from the buffer.
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, _data_len: u16) -> Result<DNSRecord, std::io::Error> {
         
         let mut mname: String = String::new(); // Primary name server
@@ -55,6 +81,18 @@ impl DNSRecordTrait for DNSSOARecord {
         Ok(DNSRecord::SOA(DNSSOARecord::new(domain, qclass, ttl, rdata)))
     }
 
+    //TODO: Call DNSRecordPreamble::new().write(buffer)
+    /// Writes this DNS SOA record to the given byte buffer.
+    ///
+    /// This method serializes the SOA record into a byte format, including all fields
+    /// such as the primary name server, responsible person's email, serial number, and timing parameters.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer` where the record will be serialized.
+    ///
+    /// # Returns
+    /// - `Ok(())` on successful serialization.
+    /// - `Err(std::io::Error)` if an error occurs during writing.
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
         match buffer.write_qname(&self.preamble.name) {
             Ok(s) => s,
@@ -126,6 +164,20 @@ impl DNSRecordTrait for DNSSOARecord {
 }
 
 impl DNSSOARecord {
+    /// Constructs a new `DNSSOARecord`.
+    ///
+    /// This method creates a new SOA record with the specified domain name, class, TTL,
+    /// primary name server, responsible person's email, serial number, and various timing parameters.
+    ///
+    /// # Parameters
+    /// - `name`: The domain name associated with the record.
+    /// - `class`: The class of the DNS record, typically `IN` for internet.
+    /// - `ttl`: The time-to-live value for the record, indicating how long it should be cached.
+    /// - `rdata`: A tuple containing the primary name server (mname), responsible person's email (rname),
+    ///   serial number, refresh interval, retry interval, expire limit, and minimum TTL.
+    ///
+    /// # Returns
+    /// A new instance of `DNSSOARecord`.
     fn new(name: String, class: QRClass, ttl: u32, rdata:(String,String,u32,u32,u32,u32,u32)) -> Self {
         DNSSOARecord {
             preamble: DNSRecordPreamble::new(name, QRType::SOA, class, ttl, 0), // rdlength will be set later

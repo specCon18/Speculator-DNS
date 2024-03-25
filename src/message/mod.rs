@@ -7,23 +7,36 @@ use records::DNSRecord;
 use header::DNSHeaderSection;
 use std::net::Ipv4Addr;
 
-
+/// Represents the types of DNS query records.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QRType {
+    /// Unknown record type
     UNKNOWN(u16),
-    A,       // IPv4 address
-    NS,      // Name Server
-    CNAME,   // Canonical Name
-    SOA,     // State of Authority
-    PTR,    // Pointer Record
-    MX,     // Mail Exchange
-    TXT,    // Text Record
-    AAAA,   // IPv6 address
-    SRV,    // Service Record
-    CAA,   // Certification Authority Authorization
+    /// IPv4 address
+    A,
+    /// Name Server
+    NS,
+    /// Canonical Name
+    CNAME,
+    /// State of Authority
+    SOA,
+    /// Pointer Record
+    PTR,
+    /// Mail Exchange
+    MX,
+    /// Text Record
+    TXT,
+    /// IPv6 address
+    AAAA,
+    /// Service Record
+    SRV,
+    /// Certification Authority Authorization
+    CAA,
 }
 
 impl QRType {
+
+    /// Converts the `QRType` to its numeric representation for serialization.  
     pub fn to_u16(&self) -> u16 {
         match *self {
             QRType::A => 1,       
@@ -40,6 +53,7 @@ impl QRType {
         }
     }
 
+    /// Converts a numeric value to the corresponding `QRType`.
     pub fn from_u16(value: u16) -> QRType {
         match value {
             1 => QRType::A,       
@@ -58,6 +72,7 @@ impl QRType {
 }
 
 impl std::fmt::Display for QRType {
+    /// Provides a human-readable representation of the QRType.
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let as_str: &str = match *self {
             QRType::A => "A (IPv4 address)",
@@ -76,15 +91,21 @@ impl std::fmt::Display for QRType {
     }
 }
 
+/// Represents the class of DNS query records.
 #[derive(Debug, Clone, Copy, PartialEq,Eq)]
 pub enum QRClass {
-    IN,    // Internet
-    CH,    // CHAOS
-    HS,    // Hesiod
-    ANY, // Any class
+    /// The Internet class, most commonly used.
+    IN,
+    /// The CHAOS class.
+    CH,
+    /// The Hesiod (HS) class.
+    HS,
+    /// Represents any class.
+    ANY,
 }
 
 impl QRClass {
+    /// Converts a numeric value to the corresponding `QRClass`, if valid.
     pub fn from_u16(value: u16) -> Option<QRClass> {
         match value {
             1 => Some(QRClass::IN),
@@ -94,6 +115,7 @@ impl QRClass {
             _ => None,
         }
     }
+    /// Converts the `QRClass` to its numeric representation.
     pub fn to_u16(value: &QRClass) -> u16 {
         match value {
             QRClass::IN => 1,
@@ -104,21 +126,26 @@ impl QRClass {
     }
 }
 
+/// Represents a DNS query with the domain name, query type, and query class.
 #[derive(Debug,Clone, PartialEq, Eq)]
 pub struct DNSQuestion {
-    pub qname: String, // The domain name being queried
-    pub qtype: QRType, // The type of the query
-    pub qclass: QRClass, // The class of the query
+    /// The domain name being queried.
+    pub qname: String,
+    /// The type of the query.
+    pub qtype: QRType,
+    /// The class of the query.
+    pub qclass: QRClass
 }
 
 impl DNSQuestion {
-    // Constructor for creating a new DNSQuestion
+    /// Constructs a new `DNSQuestion`.
     pub fn new(qname:String,qtype:QRType,qclass:QRClass) -> Self { 
         DNSQuestion { 
             qname, 
             qtype, 
             qclass 
         }}
+    /// Reads and populates the fields of `DNSQuestion` from a `BytePacketBuffer`.
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
         match buffer.read_qname(&mut self.qname) {
             Ok(s) => s,
@@ -134,13 +161,14 @@ impl DNSQuestion {
         };
         Ok(())
     }
+    /// Writes the `DNSQuestion` to a `BytePacketBuffer`.
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
         match buffer.write_qname(&self.qname) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
-        let typenum = self.qtype.to_u16();
+        let typenum: u16 = self.qtype.to_u16();
         match buffer.write_u16(typenum) {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -206,6 +234,7 @@ impl DNSAdditionalSection {
     pub fn add_record(&mut self, record: DNSRecord) { self.records.push(record); }
 }
 
+/// Represents a DNS packet including header, question, answer, authority, and additional sections.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSPacket {
     pub header: DNSHeaderSection,
@@ -216,7 +245,7 @@ pub struct DNSPacket {
 }
 
 impl DNSPacket {
-    // Constructor for creating a new DNSPacket
+    /// Constructs a new `DNSPacket`.
     pub fn new() -> Self {
         let header:DNSHeaderSection = DNSHeaderSection::new();
         let question:DNSQuestionSection = DNSQuestionSection::new();
@@ -231,6 +260,7 @@ impl DNSPacket {
             additional
         }
     }
+    /// Parses a `DNSPacket` from the given `BytePacketBuffer`.
     pub fn from_buffer(buffer: &mut BytePacketBuffer) -> Result<DNSPacket,std::io::Error> {
         let mut result:DNSPacket = DNSPacket::new();
         match result.header.read(buffer) {
@@ -272,6 +302,7 @@ impl DNSPacket {
         Ok(result)
     }
     
+    /// Writes the `DNSPacket` to a `BytePacketBuffer`.
     pub fn write(&mut self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
         self.header.qdcount = self.question.questions.len() as u16;
         self.header.ancount = self.answer.answers.len() as u16;
@@ -310,7 +341,8 @@ impl DNSPacket {
 
         Ok(())
     }
-    
+
+    /// Retrieves the first IPv4 address from the answer section, if available.
     pub fn get_random_a(&self) -> Option<Ipv4Addr> {
         self.answer.answers
             .iter()
@@ -321,6 +353,7 @@ impl DNSPacket {
             .next()
     }
     
+    /// Returns an iterator over Name Server (NS) records in the authority section that match the given query name.
     pub fn get_ns<'a>(&'a self, qname: &'a str) -> impl Iterator<Item = (&'a str, &'a str)> {
         self.authority.records
             .iter()
@@ -330,7 +363,8 @@ impl DNSPacket {
             })
             .filter(move |(domain, _)| qname.ends_with(*domain))
     }
-    
+
+    /// Resolves the IP address of a name server specified in the authority section, if available in the additional section.
     pub fn get_resolved_ns(&self, qname: &str) -> Option<Ipv4Addr> {
         self.get_ns(qname)
             .flat_map(|(_, host)| {

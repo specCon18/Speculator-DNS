@@ -1,16 +1,31 @@
 use crate::message::byte_packet_buffer::BytePacketBuffer;
 
+/// Represents the DNS operation codes (OpCode) indicating the type of query being performed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpCode {
-    Query,          // Standard query (QUERY)
-    IQuery,         // Inverse query (IQUERY, deprecated)
-    Status,         // Server status request (STATUS)
-    Notify,         // Notify (NOTIFY, RFC 1996)
-    Update,         // Dynamic update (UPDATE, RFC 2136)
+    /// Standard query (QUERY)
+    Query,
+    /// Inverse query (IQUERY, deprecated)
+    IQuery,
+    /// Server status request (STATUS)
+    Status,
+    /// Notify (NOTIFY, RFC 1996)
+    Notify,
+    /// Dynamic update (UPDATE, RFC 2136)
+    Update,
     // Codes 6-15 are reserved for future use
 }
 
 impl OpCode {
+    /// Converts a numeric value to the corresponding OpCode.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The numeric value representing the OpCode.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Some(OpCode)` if a valid OpCode exists for the value, otherwise `None`.
     pub fn from_u8(value: u8) -> Option<OpCode> {
         match value {
             0 => Some(OpCode::Query),
@@ -21,6 +36,15 @@ impl OpCode {
             _ => None,
         }
     }
+    /// Converts an OpCode to its numeric representation.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The OpCode to convert.
+    ///
+    /// # Returns
+    ///
+    /// Returns the numeric representation of the OpCode.
     pub fn to_u8(value:&OpCode) -> u8 {
         match value {
             OpCode::Query => 0,
@@ -32,6 +56,7 @@ impl OpCode {
     }
 }
 
+/// Flags indicating whether a DNS message is a query or a response.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QRFlag {
     Query,
@@ -39,6 +64,15 @@ pub enum QRFlag {
 }
 
 impl QRFlag {
+    /// Converts a numeric value to the corresponding QRFlag.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The numeric value representing the QRFlag.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Some(QRFlag)` if a valid QRFlag exists for the value, otherwise `None`.
     pub fn from_u8(value: u8) -> Option<QRFlag> {
         match value {
             0 => Some(QRFlag::Query),
@@ -158,6 +192,7 @@ impl CDFlag {
     }
 }
 
+/// Represents DNS response codes (RCode), indicating the outcome of a query.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RCode {
     NoError,     // No error condition
@@ -176,6 +211,15 @@ pub enum RCode {
 }
 
 impl RCode {
+    /// Converts a numeric value to the corresponding RCode.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The numeric value representing the RCode.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Some(RCode)` if a valid RCode exists for the value, otherwise `None`.
     pub fn from_u8(value: u8) -> Option<RCode> {
         match value {
             0 => Some(RCode::NoError),
@@ -194,6 +238,7 @@ impl RCode {
     }
 }
 
+/// Represents the header section of a DNS message.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DNSHeaderSection {
     pub id: u16, // Identifier: a 16-bit ID
@@ -233,6 +278,15 @@ impl DNSHeaderSection {
         let arcount: u16 = 0;
         DNSHeaderSection { id, qr, opcode, aa, tc, rd, ra, z, ad, cd, rcode, qdcount, ancount, nscount, arcount }
     }
+    /// Reads and populates the fields of `DNSHeaderSection` from a `BytePacketBuffer`.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffer` - A mutable reference to a `BytePacketBuffer` from which to read the DNS header.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if there's an issue reading from the buffer.
     pub fn read(&mut self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
         self.id = match buffer.read_u16() {
             Ok(s) => s,
@@ -324,6 +378,15 @@ impl DNSHeaderSection {
 
         Ok(())
     }
+    /// Writes the `DNSHeaderSection` to a `BytePacketBuffer`.
+    ///
+    /// # Arguments
+    ///
+    /// * `buffer` - A mutable reference to a `BytePacketBuffer` where the DNS header will be written.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if there's an issue writing to the buffer.
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(),std::io::Error> {
         
         match buffer.write_u16(self.id) {

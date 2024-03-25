@@ -30,6 +30,7 @@ use crate::message::{
 };
 
 //TODO: Consider adding a macro to create these and generate this enum
+/// Enumerates all supported DNS record types, including a variant for unknown record types.
 #[derive(Debug, PartialEq, Eq)]
 pub enum DNSRecord {
     A(DNSARecord),
@@ -45,15 +46,35 @@ pub enum DNSRecord {
     UNKNOWN(DNSUNKNOWNRecord)
 }
 
-
+/// Defines the common interface for DNS record types to implement.
 trait DNSRecordTrait {
+    /// Reads a DNS record from a byte buffer and returns a `DNSRecord` enum variant encapsulating the record.
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, data_len: u16) -> Result<DNSRecord, std::io::Error>;
+
+    /// Serializes the DNS record into a byte buffer.
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error>;
 }
 
-
+/// Represents a DNS record, encapsulating various types of DNS records.
+///
+/// This enum abstracts the variety of DNS records into a single type, allowing for polymorphic
+/// handling of DNS records. It supports reading from and writing to a byte packet buffer, enabling
+/// DNS message serialization and deserialization.
 impl DNSRecord {
-
+    /// Reads a DNS record from a byte packet buffer, returning the appropriate `DNSRecord` variant
+    /// based on the record type identified in the buffer.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer` containing the DNS record data.
+    ///
+    /// # Returns
+    /// A `Result` which is either:
+    /// - `Ok(DNSRecord)` on successful reading of the DNS record.
+    /// - `Err(std::io::Error)` on failure, with an error indicating the cause.
+    ///
+    /// # Errors
+    /// This function will return an error if there's an issue reading the record from the buffer,
+    /// such as if the record type is unsupported or if there's an issue reading the buffer data.
     pub fn read(buffer: &mut BytePacketBuffer) -> Result<DNSRecord, std::io::Error> {
         let (domain, qtype, qclass, ttl, data_len) = DNSRecordPreamble::read(buffer)?;
         match qtype {
@@ -72,6 +93,19 @@ impl DNSRecord {
         }
     }
 
+    /// Writes this DNS record into a byte packet buffer.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer` where the DNS record will be written.
+    ///
+    /// # Returns
+    /// A `Result` which is either:
+    /// - `Ok(())` on successful writing of the DNS record.
+    /// - `Err(std::io::Error)` on failure, with an error indicating the cause.
+    ///
+    /// # Errors
+    /// This function will return an error if there's an issue writing the record to the buffer,
+    /// such as if the record type is unsupported.
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
         // Implementation remains unchanged; adapt as needed
         match self {
@@ -121,20 +155,50 @@ impl DNSRecord {
     }
 }
 
+/// Represents the preamble part of a DNS record.
+///
+/// The preamble contains the common header fields present at the start of each DNS record,
+/// including the domain name, record type, class, TTL, and the data length of the record.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSRecordPreamble {
-    pub name: String, // The domain name the record pertains to
-    pub rtype: QRType, // The type of the resource record
-    pub class: QRClass, // The class of the resource record
-    pub ttl: u32, // Time to live, in seconds
-    pub rdlength: u16, // Length of the RDATA field
+    /// The domain name associated with the DNS record.
+    pub name: String,
+    /// The type of the DNS record.
+    pub rtype: QRType,
+    /// The class of the DNS record, typically `IN` for Internet.
+    pub class: QRClass,
+    /// The time-to-live value, specifying how long the record may be cached.
+    pub ttl: u32,
+    /// The length of the record data.
+    pub rdlength: u16
 }
 
 impl DNSRecordPreamble {
-    // Constructor for creating a new DNSRecordPreamble
+    /// Constructs a new `DNSRecordPreamble`.
+    ///
+    /// # Parameters
+    /// - `name`: The domain name associated with the record.
+    /// - `rtype`: The DNS record type.
+    /// - `class`: The class of the record, typically `IN`.
+    /// - `ttl`: The time-to-live value for the record.
+    /// - `rdlength`: The length of the record's data.
+    ///
+    /// # Returns
+    /// A new instance of `DNSRecordPreamble`.
     pub fn new(name: String, rtype: QRType, class: QRClass, ttl: u32, rdlength: u16) -> Self { DNSRecordPreamble { name, rtype, class, ttl, rdlength }}
 
-    // New helper function for reading the preamble
+    /// Reads the preamble of a DNS record from a byte packet buffer.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer`.
+    ///
+    /// # Returns
+    /// A `Result` which is either:
+    /// - `Ok((String, QRType, QRClass, u32, u16))` on successful reading of the preamble.
+    /// - `Err(std::io::Error)` on failure, with an error indicating the cause.
+    ///
+    /// # Errors
+    /// This method returns an error if reading the preamble from the buffer fails.
     fn read(buffer: &mut BytePacketBuffer) -> Result<(String, QRType, QRClass, u32, u16), std::io::Error> {
         let mut domain: String = String::new();
         match buffer.read_qname(&mut domain) {
@@ -162,7 +226,23 @@ impl DNSRecordPreamble {
         Ok((domain, qtype, class, ttl, data_len))
     }
 
-    // Method to write the common preamble parts to the buffer
+    /// Writes the preamble of this DNS record into a byte packet buffer.
+    ///
+    /// This method serializes the common preamble fields of a DNS record, including the domain name,
+    /// record type, class, TTL, and data length, into the specified buffer. It's essential for constructing
+    /// the complete DNS record for transmission.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer` where the preamble will be written.
+    ///
+    /// # Returns
+    /// A `Result` which is either:
+    /// - `Ok(())` indicating successful writing of the preamble to the buffer.
+    /// - `Err(std::io::Error)` on failure, with an error detailing the cause of the failure.
+    ///
+    /// # Errors
+    /// This method returns an error if there's an issue writing any of the preamble fields into the buffer,
+    /// such as an overflow of the buffer or a problem encoding the domain name.
     pub fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
         match buffer.write_qname(&self.name) {
             Ok(s) => s,

@@ -9,14 +9,35 @@ use crate::message::{
     DNSRecord
 };
 
+/// Represents a DNS MX (Mail Exchange) record.
+///
+/// MX records are used to specify the mail servers responsible for accepting email messages
+/// on behalf of a domain, providing a mechanism for email delivery targeting. This struct
+/// encapsulates the MX record data including the preference and mail exchange domain.
 #[derive(Debug, PartialEq, Eq)]
 pub struct DNSMXRecord {
+    /// Common DNS record preamble containing metadata such as domain name, record type, class, and TTL (Time To Live).
     pub preamble: DNSRecordPreamble,
-    pub preference: u16, // Preference value
-    pub exchange: String, // Mail exchange domain
+    /// The preference value of the MX record, used to prioritize mail delivery when multiple MX records are present.
+    /// Lower values are preferred.
+    pub preference: u16,
+    /// The domain name of the mail exchange server. This value specifies the target host for email messages sent to the domain.
+    pub exchange: String,
 }
 
 impl DNSRecordTrait for DNSMXRecord {
+    /// Reads a DNS MX record from the provided byte buffer and constructs a `DNSMXRecord` instance.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer` from which the record data will be read.
+    /// - `domain`: The domain name associated with the record.
+    /// - `qclass`: The class of the DNS query, typically `IN` for internet.
+    /// - `ttl`: The Time To Live (TTL) value for the DNS record.
+    /// - `_data_len`: The length of the data in the record. Unused in this implementation.
+    ///
+    /// # Returns
+    /// - `Ok(DNSRecord)` containing the newly constructed `DNSMXRecord`.
+    /// - `Err(std::io::Error)` if there is an error reading from the buffer.
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, _data_len: u16) -> Result<DNSRecord, std::io::Error> {
         let preference: u16 = match buffer.read_u16() {
             Ok(s) => s,
@@ -33,7 +54,18 @@ impl DNSRecordTrait for DNSMXRecord {
 
         Ok(DNSRecord::MX(DNSMXRecord::new(domain, qclass, ttl, rdata)))
     }
-
+    //TODO: Call DNSRecordPreamble::new().write(buffer)
+    /// Writes this DNS MX record to the given byte buffer.
+    ///
+    /// This method serializes the MX record into the buffer, including both the record preamble
+    /// and the specific fields for the MX record such as the preference and the mail exchange domain.
+    ///
+    /// # Parameters
+    /// - `buffer`: A mutable reference to a `BytePacketBuffer` where the record will be serialized.
+    ///
+    /// # Returns
+    /// - `Ok(())` on successful serialization.
+    /// - `Err(std::io::Error)` if an error occurs during writing.
     fn write(&self, buffer: &mut BytePacketBuffer) -> Result<(), std::io::Error> {
         match buffer.write_qname(&self.preamble.name) {
             Ok(s) => s,
@@ -85,6 +117,19 @@ impl DNSRecordTrait for DNSMXRecord {
 }
 
 impl DNSMXRecord {
+    /// Constructs a new `DNSMXRecord`.
+    ///
+    /// This method initializes a DNS MX record with the given domain name, class, TTL,
+    /// preference, and mail exchange domain.
+    ///
+    /// # Parameters
+    /// - `name`: The domain name associated with the record.
+    /// - `class`: The class of the DNS record, typically `IN` for internet.
+    /// - `ttl`: The time-to-live value for the record, indicating how long it should be cached.
+    /// - `rdata`: A tuple containing the preference and the mail exchange domain for the MX record.
+    ///
+    /// # Returns
+    /// A new instance of `DNSMXRecord`.
     fn new(name: String, class: QRClass, ttl: u32, rdata:(u16, String)) -> Self {
         return DNSMXRecord {
             preamble: DNSRecordPreamble::new(name, QRType::MX, class, ttl, 0), // rdlength will be set later

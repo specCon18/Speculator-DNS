@@ -1,11 +1,19 @@
+/// A buffer specifically designed to handle network packet data efficiently.
+///
+/// This struct provides a fixed-size buffer along with methods to manipulate
+/// and navigate through the data it contains. It's particularly useful for
+/// encoding and decoding packet data from protocols like DNS.
 pub struct BytePacketBuffer {
+    /// The fixed-size buffer where packet data is stored.
     pub buf: [u8; 512],
+    /// The current position within the buffer, used for read/write operations.
     pub pos: usize,
 }
 
 impl BytePacketBuffer {
-    /// This gives us a fresh buffer for holding the packet contents, and a
-    /// field for keeping track of where we are.
+    /// Constructs a new `BytePacketBuffer`.
+    ///
+    /// Initializes the buffer with zeroed data and sets the position to the start of the buffer.
     pub fn new() -> BytePacketBuffer {
         BytePacketBuffer {
             buf: [0; 512],
@@ -13,26 +21,49 @@ impl BytePacketBuffer {
         }
     }
 
-    /// Get the current position within buffer
+    /// Returns the current position within the buffer.
+    ///
+    /// This position is used internally to track read/write operations.
     pub fn pos(&self) -> usize {
         self.pos
     }
     
-    /// Step the buffer position forward a specific number of steps
+    /// Advances the current position within the buffer by a specified number of steps.
+    ///
+    /// # Arguments
+    ///
+    /// * `steps` - The number of steps to advance the position by.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if the resulting position would be outside the buffer.
     pub fn step(&mut self, steps: usize) -> Result<(),std::io::Error> {
         self.pos += steps;
 
         Ok(())
     }
 
-    /// Change the buffer position
+
+    /// Sets the current position within the buffer to a specified value.
+    ///
+    /// # Arguments
+    ///
+    /// * `pos` - The position to set the buffer's current position to.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if the specified position is outside the buffer.
     pub fn seek(&mut self, pos: usize) -> Result<(),std::io::Error> {
         self.pos = pos;
 
         Ok(())
     }
     
-    // Read the current position and step forward once
+    /// Reads a single byte from the current position and advances the position by one.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to read beyond the end of the buffer.
     fn read(&mut self) -> Result<u8,std::io::Error>{
         if self.pos >= 512 {
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
@@ -43,7 +74,11 @@ impl BytePacketBuffer {
         Ok(res)
     }
     
-    /// Read a single byte and move the position one step forward
+    /// Reads a single byte from the current position and advances the position by one.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to read beyond the end of the buffer.
     pub fn read_u8(&mut self) -> Result<u8,std::io::Error> {
         if self.pos >= 512 {
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
@@ -53,7 +88,15 @@ impl BytePacketBuffer {
         Ok(res)
     }
     
-    /// Get a single byte, without changing the buffer position
+    /// Retrieves a single byte from the buffer at a specified position without changing the current position.
+    ///
+    /// # Arguments
+    ///
+    /// * `pos` - The position in the buffer from which to read the byte.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if the specified position is outside the buffer.
     pub fn get_byte(&mut self, pos: usize) -> Result<u8,std::io::Error> {
         if pos >= 512 {
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
@@ -61,7 +104,16 @@ impl BytePacketBuffer {
         Ok(self.buf[pos])
     }
 
-    /// Get a range of bytes
+    /// Reads a sequence of bytes starting from a specified position and for a specified length.
+    ///
+    /// # Arguments
+    ///
+    /// * `start` - The starting position in the buffer.
+    /// * `len` - The number of bytes to read.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if the specified range extends beyond the end of the buffer.
     pub fn get_byte_range(&mut self, start: usize, len: usize) -> Result<&[u8],std::io::Error> {
         if start + len >= 512 {
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
@@ -69,7 +121,11 @@ impl BytePacketBuffer {
         Ok(&self.buf[start..start + len as usize])
     }
 
-    /// Read two bytes, stepping two steps forward
+    /// Reads two bytes from the current position as a single `u16` and advances the position by two.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to read beyond the end of the buffer.
     pub fn read_u16(&mut self) -> Result<u16,std::io::Error> {
         let res:u16 = ((match self.read() {
             Ok(s) => s,
@@ -82,7 +138,11 @@ impl BytePacketBuffer {
         Ok(res)
     }
 
-    /// Read four bytes, stepping four steps forward
+    /// Reads four bytes from the current position as a single `u32` and advances the position by four.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to read beyond the end of the buffer.
     pub fn read_u32(&mut self) -> Result<u32,std::io::Error> {
         let res:u32 = ((match self.read() {
                 Ok(s) => s,
@@ -103,7 +163,12 @@ impl BytePacketBuffer {
 
         Ok(res)
     }
-    /// Read sixteen bytes, stepping sixteen steps forward
+
+    /// Reads sixteen bytes from the current position as a single `u128` and advances the position by sixteen.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to read beyond the end of the buffer.
     pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
         let res:u128 = ((match self.read() {
                 Ok(s) => s,
@@ -172,11 +237,15 @@ impl BytePacketBuffer {
         Ok(res)
     }
 
-    /// Read a qname
+    /// Reads a domain name (QNAME) from the buffer, handling compression according to the DNS protocol.
     ///
-    /// The tricky part: Reading domain names, taking labels into consideration.
-    /// Will take something like [3]www[6]google[3]com[0] and append
-    /// www.google.com to outstr.
+    /// # Arguments
+    ///
+    /// * `outstr` - A mutable string reference where the domain name will be appended.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if an invalid domain name format is encountered or if reading beyond the buffer.
     pub fn read_qname(&mut self, outstr: &mut String) -> Result<(),std::io::Error> {
 
         // Since we might encounter jumps, we'll keep track of our position
@@ -278,7 +347,15 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    /// Write a single byte and move the position one step forward
+    /// Writes a single byte to the current position and advances the position by one.
+    ///
+    /// # Arguments
+    ///
+    /// * `val` - The byte value to write to the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to write beyond the end of the buffer.
     fn write(&mut self, val: u8) -> Result<(),std::io::Error> {
         if self.pos >= 512 {
             return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
@@ -403,11 +480,18 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    /// Write a qname
+    /// Writes a domain name to the buffer in QNAME format, handling label compression.
     ///
-    /// The tricky part: Reading domain names, taking labels into consideration.
-    /// Will take something like www.google.com and append
-    /// [3]www[6]google[3]com[0] to outstr.
+    /// This method encodes a domain name into the buffer, converting it into the QNAME format
+    /// used by the DNS protocol. It handles label compression if applicable.
+    ///
+    /// # Arguments
+    ///
+    /// * `qname` - The domain name to encode into the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if there is an issue with writing the domain name, such as exceeding the buffer size.
     pub fn write_qname(&mut self, qname: &str) -> Result<(),std::io::Error> {
         for label in qname.split('.') {
             let len = label.len();
