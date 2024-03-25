@@ -1,4 +1,4 @@
-use super::byte_packet_buffer::BytePacketBuffer;
+use crate::message::byte_packet_buffer::BytePacketBuffer;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpCode {

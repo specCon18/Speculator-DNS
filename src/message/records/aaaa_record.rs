@@ -1,4 +1,13 @@
-use super::{DNSRecordPreamble,DNSRecordTrait,BytePacketBuffer,QRClass,QRType,DNSRecord};
+use crate::message::{
+    records::{
+        DNSRecordPreamble,
+        DNSRecordTrait
+    },
+    BytePacketBuffer,
+    QRClass,
+    QRType,
+    DNSRecord
+};
 use std::net::Ipv6Addr;
 
 #[derive(Debug, PartialEq, Eq)]

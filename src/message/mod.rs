@@ -1,6 +1,6 @@
 pub(crate) mod header;
-mod records;
 pub(crate) mod byte_packet_buffer;
+mod records;
 
 use byte_packet_buffer::BytePacketBuffer;
 use records::DNSRecord;

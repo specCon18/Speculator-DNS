@@ -2,10 +2,10 @@ mod message;
 mod server;
 
 use std::net::Ipv4Addr;
-
 use server::DNSResolver;
 
 fn main() -> Result<(),std::io::Error>{
+
     // Instanciate Resolver
     let resolver = match DNSResolver::new(Ipv4Addr::new(0,0,0,0), 2053) {
         Ok(s) => s,

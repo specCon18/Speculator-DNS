@@ -10,18 +10,24 @@ mod srv_record;
 mod txt_record;
 mod unknown_record;
 
-use a_record::DNSARecord;
-use aaaa_record::DNSAAAARecord;
-use caa_record::DNSCAARecord;
-use cname_record::DNSCNAMERecord;
-use mx_record::DNSMXRecord;
-use ns_record::DNSNSRecord;
-use ptr_record::DNSPTRRecord;
-use soa_record::DNSSOARecord;
-use srv_record::DNSSRVRecord;
-use txt_record::DNSTXTRecord;
-use unknown_record::DNSUNKNOWNRecord;
-use crate::message::{QRType,QRClass,byte_packet_buffer::BytePacketBuffer};
+use crate::message::{
+    records::{
+        a_record::DNSARecord,
+        aaaa_record::DNSAAAARecord,
+        caa_record::DNSCAARecord,
+        cname_record::DNSCNAMERecord,
+        mx_record::DNSMXRecord,
+        ns_record::DNSNSRecord,
+        ptr_record::DNSPTRRecord,
+        soa_record::DNSSOARecord,
+        srv_record::DNSSRVRecord,
+        txt_record::DNSTXTRecord,
+        unknown_record::DNSUNKNOWNRecord
+    },
+    QRType,
+    QRClass,
+    byte_packet_buffer::BytePacketBuffer
+};
 
 //TODO: Consider adding a macro to create these and generate this enum
 #[derive(Debug, PartialEq, Eq)]

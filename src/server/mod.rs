@@ -7,6 +7,7 @@ use crate::message::{
     QRClass,
     QRType
 };
+
 pub struct DNSResolver {
     socket: UdpSocket,
 }
