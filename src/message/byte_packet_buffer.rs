@@ -6,6 +6,39 @@ pub enum BytePacketBufferError {
     ExceededJumpLimit,
 }
 
+/// Implements conversion from `BytePacketBufferError` to `std::io::Error`.
+///
+/// This implementation allows `BytePacketBufferError` types to be converted into
+/// `std::io::Error`, facilitating error handling that integrates with operations
+/// that may produce `std::io::Error`. This is particularly useful in contexts where
+/// functions return `std::io::Error` and you are working with operations that may
+/// generate `BytePacketBufferError`, enabling seamless error propagation across different
+/// error types.
+///
+/// # Examples
+///
+/// This can be used in a context where a function expects a result of `Result<(), std::io::Error>`
+/// but you are working with operations that return `Result<(), BytePacketBufferError>`.
+/// Using the `?` operator in such a context will automatically convert `BytePacketBufferError`
+/// into `std::io::Error`:
+///
+/// ```
+/// fn some_io_operation() -> Result<(), std::io::Error> {
+///     // Assuming `some_buffer_operation` returns `Result<(), BytePacketBufferError>`
+///     some_buffer_operation()?;
+///     Ok(())
+/// }
+/// ```
+///
+/// # Errors
+///
+/// This conversion handles the following `BytePacketBufferError` variants, mapping them to their
+/// corresponding `std::io::ErrorKind`:
+///
+/// - `BytePacketBufferError::Overflow` maps to `std::io::ErrorKind::Other` with a message indicating a buffer overflow.
+/// - `BytePacketBufferError::UnexpectedEof` maps to `std::io::ErrorKind::UnexpectedEof` with a message indicating an unexpected end of the buffer.
+/// - `BytePacketBufferError::InvalidDomainNameFormat` maps to `std::io::ErrorKind::InvalidInput` with a message indicating an invalid domain name format.
+/// - `BytePacketBufferError::ExceededJumpLimit` maps to `std::io::ErrorKind::Other` with a message indicating that the jump limit was exceeded.
 impl From<BytePacketBufferError> for std::io::Error {
     fn from(err: BytePacketBufferError) -> Self {
         match err {
@@ -294,7 +327,15 @@ impl BytePacketBuffer {
         }
     }
 
-    /// Write two bytes and move the position two steps forward
+    /// Writes two bytes and move the position two steps forward
+    ///
+    /// # Arguments
+    ///
+    /// * `val` - The byte value to write to the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to write beyond the end of the buffer.
     pub fn write_u16(&mut self, val: u16) -> Result<(), std::io::Error> {
         for i in (0..16).step_by(8).rev() {
             let byte = ((val >> i) & 0xFF) as u8;
@@ -306,7 +347,15 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    /// Write four bytes and move the position four steps forward
+    /// Writes four bytes and move the position four steps forward
+    ///
+    /// # Arguments
+    ///
+    /// * `val` - The byte value to write to the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to write beyond the end of the buffer.
     pub fn write_u32(&mut self, val: u32) -> Result<(), std::io::Error> {
         for i in (0..32).step_by(8).rev() {
             let byte = ((val >> i) & 0xFF) as u8;
@@ -318,7 +367,15 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-    /// Write sixteen bytes and move the position sixteen steps forward
+    /// Writes sixteen bytes and move the position sixteen steps forward
+    ///
+    /// # Arguments
+    ///
+    /// * `val` - The byte value to write to the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to write beyond the end of the buffer.
     pub fn write_u128(&mut self, val: u128) -> Result<(), std::io::Error> {
         for i in (0..128).step_by(8).rev() {
             let byte = ((val >> i) & 0xFF) as u8;
@@ -330,8 +387,14 @@ impl BytePacketBuffer {
         Ok(())
     }
 
-
-    /// Writes a domain name to the buffer in QNAME format, handling label compression.
+    /// Writes a domain name to the buffer in QNAME format, handling label compression.    ///
+    /// # Arguments
+    ///
+    /// * `val` - The byte value to write to the buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `Err` if attempting to write beyond the end of the buffer.
     ///
     /// This method encodes a domain name into the buffer, converting it into the QNAME format
     /// used by the DNS protocol. It handles label compression if applicable.
