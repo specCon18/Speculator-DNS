@@ -45,18 +45,18 @@ impl DNSRecordTrait for DNSCAARecord {
     fn read(buffer: &mut BytePacketBuffer, domain: String, qclass: QRClass, ttl: u32, data_len: u16) -> Result<DNSRecord, std::io::Error> {
         let flags: u8 = match buffer.read_u8() {
             Ok(s) => s,
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
         let tag_len: u8 = match buffer.read_u8() {
             Ok(s) => s,
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
         let mut i:u16 = 0;
         let mut tag: String = String::new();
         while i as u8 <= tag_len {                    
             tag.push(match buffer.read_u8() {
                 Ok(s) => s,
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             } as char);
             i += 1;
         }
@@ -66,7 +66,7 @@ impl DNSRecordTrait for DNSCAARecord {
         while i <= value_len {                    
             tag.push(match buffer.read_u8() {
                 Ok(s) => s,
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             } as char);
             i += 1;
         }
@@ -96,22 +96,22 @@ impl DNSRecordTrait for DNSCAARecord {
                 
         match buffer.write_u8(self.flags) {
             Ok(s) => s,
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
         match buffer.write_u8(self.tag.len() as u8) {
             Ok(s) => s,
-            Err(e) => return Err(e),
+            Err(e) => return Err(e.into()),
         };
         for byte in self.tag.as_bytes() {
             match buffer.write_u8(*byte) {
                 Ok(s) => s,
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             };
         }
         for byte in self.value.as_bytes() {
             match buffer.write_u8(*byte) {
                 Ok(s) => s,
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             };
         }
         Ok(())

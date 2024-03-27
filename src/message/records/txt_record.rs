@@ -82,7 +82,7 @@ impl DNSRecordTrait for DNSTXTRecord {
         for byte in text_bytes {
             match buffer.write_u8(*byte) {
                 Ok(s) => s,
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             };
         }
         Ok(())

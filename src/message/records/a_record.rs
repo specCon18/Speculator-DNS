@@ -93,7 +93,7 @@ impl DNSRecordTrait for DNSARecord {
         for octet in octets.iter() {
             match buffer.write_u8(*octet) {
                 Ok(s) => s,
-                Err(e) => return Err(e),
+                Err(e) => return Err(e.into()),
             };
         }
         Ok(())

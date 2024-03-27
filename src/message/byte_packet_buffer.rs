@@ -1,3 +1,22 @@
+#[derive(Debug)]
+pub enum BytePacketBufferError {
+    Overflow,
+    UnexpectedEof,
+    InvalidDomainNameFormat,
+    ExceededJumpLimit,
+}
+
+impl From<BytePacketBufferError> for std::io::Error {
+    fn from(err: BytePacketBufferError) -> Self {
+        match err {
+            BytePacketBufferError::Overflow => std::io::Error::new(std::io::ErrorKind::Other, "Buffer overflow"),
+            BytePacketBufferError::UnexpectedEof => std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Unexpected end of buffer"),
+            BytePacketBufferError::InvalidDomainNameFormat => std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid domain name format"),
+            BytePacketBufferError::ExceededJumpLimit => std::io::Error::new(std::io::ErrorKind::Other, "Exceeded jump limit"),
+        }
+    }
+}
+
 /// A buffer specifically designed to handle network packet data efficiently.
 ///
 /// This struct provides a fixed-size buffer along with methods to manipulate
@@ -39,10 +58,8 @@ impl BytePacketBuffer {
     /// Returns an `Err` if the resulting position would be outside the buffer.
     pub fn step(&mut self, steps: usize) -> Result<(),std::io::Error> {
         self.pos += steps;
-
         Ok(())
     }
-
 
     /// Sets the current position within the buffer to a specified value.
     ///
@@ -55,7 +72,6 @@ impl BytePacketBuffer {
     /// Returns an `Err` if the specified position is outside the buffer.
     pub fn seek(&mut self, pos: usize) -> Result<(),std::io::Error> {
         self.pos = pos;
-
         Ok(())
     }
     
@@ -64,28 +80,14 @@ impl BytePacketBuffer {
     /// # Errors
     ///
     /// Returns an `Err` if attempting to read beyond the end of the buffer.
-    fn read(&mut self) -> Result<u8,std::io::Error>{
-        if self.pos >= 512 {
-            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
+    pub fn read_u8(&mut self) -> Result<u8, BytePacketBufferError> {
+        if self.pos >= self.buf.len() {
+            Err(BytePacketBufferError::UnexpectedEof)
+        } else {
+            let res = self.buf[self.pos];
+            self.pos += 1;
+            Ok(res)
         }
-        let res = self.buf[self.pos];
-        self.pos += 1;
-
-        Ok(res)
-    }
-    
-    /// Reads a single byte from the current position and advances the position by one.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `Err` if attempting to read beyond the end of the buffer.
-    pub fn read_u8(&mut self) -> Result<u8,std::io::Error> {
-        if self.pos >= 512 {
-            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
-        }
-        let res = self.buf[self.pos];
-        self.pos += 1;
-        Ok(res)
     }
     
     /// Retrieves a single byte from the buffer at a specified position without changing the current position.
@@ -126,16 +128,13 @@ impl BytePacketBuffer {
     /// # Errors
     ///
     /// Returns an `Err` if attempting to read beyond the end of the buffer.
-    pub fn read_u16(&mut self) -> Result<u16,std::io::Error> {
-        let res:u16 = ((match self.read() {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        } as u16) << 8) | (match self.read() {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        } as u16);
-
-        Ok(res)
+    pub fn read_u16(&mut self) -> Result<u16, std::io::Error> {
+        let mut result = 0u16;
+        for i in (0..16).step_by(8).rev() {
+            let byte = self.read_u8()? as u16;
+            result |= byte << i;
+        }
+        Ok(result)
     }
 
     /// Reads four bytes from the current position as a single `u32` and advances the position by four.
@@ -143,25 +142,13 @@ impl BytePacketBuffer {
     /// # Errors
     ///
     /// Returns an `Err` if attempting to read beyond the end of the buffer.
-    pub fn read_u32(&mut self) -> Result<u32,std::io::Error> {
-        let res:u32 = ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u32) << 24)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u32) << 16)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u32) << 8)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u32) << 0);
-
-        Ok(res)
+    pub fn read_u32(&mut self) -> Result<u32, std::io::Error> {
+        let mut result = 0u32;
+        for i in (0..32).step_by(8).rev() {
+            let byte = self.read_u8()? as u32;
+            result |= byte << i;
+        }
+        Ok(result)
     }
 
     /// Reads sixteen bytes from the current position as a single `u128` and advances the position by sixteen.
@@ -170,71 +157,12 @@ impl BytePacketBuffer {
     ///
     /// Returns an `Err` if attempting to read beyond the end of the buffer.
     pub fn read_u128(&mut self) -> Result<u128, std::io::Error> {
-        let res:u128 = ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 120)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 112)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 104)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 96)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 88)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 80)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 72)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 64)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 56)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 48)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 40)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 32)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 24)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 16)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 8)
-            | ((match self.read() {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            } as u128) << 0);
-        Ok(res)
+        let mut result = 0u128;
+        for i in (0..128).step_by(8).rev() {
+            let byte = self.read_u8()? as u128;
+            result |= byte << i;
+        }
+        Ok(result)
     }
 
     /// Reads a domain name (QNAME) from the buffer, handling compression according to the DNS protocol.
@@ -356,129 +284,52 @@ impl BytePacketBuffer {
     /// # Errors
     ///
     /// Returns an `Err` if attempting to write beyond the end of the buffer.
-    fn write(&mut self, val: u8) -> Result<(),std::io::Error> {
-        if self.pos >= 512 {
-            return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "End of buffer"));
+    pub fn write_u8(&mut self, val: u8) -> Result<(), BytePacketBufferError> {
+        if self.pos >= self.buf.len() {
+            Err(BytePacketBufferError::Overflow)
+        } else {
+            self.buf[self.pos] = val;
+            self.pos += 1;
+            Ok(())
         }
-        self.buf[self.pos] = val;
-        self.pos += 1;
+    }
+
+    /// Write two bytes and move the position two steps forward
+    pub fn write_u16(&mut self, val: u16) -> Result<(), std::io::Error> {
+        for i in (0..16).step_by(8).rev() {
+            let byte = ((val >> i) & 0xFF) as u8;
+            if let Err(e) = self.write_u8(byte) {
+                eprintln!("{:#?}", e);
+                return Err(e.into());
+            }
+        }
         Ok(())
     }
 
-    /// Write a single byte and move the position one step forward
-    pub fn write_u8(&mut self, val: u8) -> Result<(),std::io::Error> {
-        match self.write(val) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        Ok(())
-    }
-
-    /// Write two bytes and move the position two step forward
-    pub fn write_u16(&mut self, val: u16) -> Result<(),std::io::Error> {
-        match self.write((val >> 8) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write((val & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        Ok(())
-    }
-
-    /// Write two bytes and move the position two step forward
-    pub fn write_u32(&mut self, val: u32) -> Result<(),std::io::Error> {
-        match self.write(((val >> 24) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 16) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 8) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write((val & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
+    /// Write four bytes and move the position four steps forward
+    pub fn write_u32(&mut self, val: u32) -> Result<(), std::io::Error> {
+        for i in (0..32).step_by(8).rev() {
+            let byte = ((val >> i) & 0xFF) as u8;
+            if let Err(e) = self.write_u8(byte) {
+                eprintln!("{:#?}", e);
+                return Err(e.into());
+            }
+        }
         Ok(())
     }
 
     /// Write sixteen bytes and move the position sixteen steps forward
     pub fn write_u128(&mut self, val: u128) -> Result<(), std::io::Error> {
-        match self.write(((val >> 120) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 112) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 104) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 96) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 88) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 80) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 72) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 64) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 56) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 48) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 40) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 32) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 24) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 16) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write(((val >> 8) & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-        match self.write((val & 0xFF) as u8) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
+        for i in (0..128).step_by(8).rev() {
+            let byte = ((val >> i) & 0xFF) as u8;
+            if let Err(e) = self.write_u8(byte) {
+                eprintln!("{:#?}", e);
+                return Err(e.into());
+            }
+        }
         Ok(())
     }
+
 
     /// Writes a domain name to the buffer in QNAME format, handling label compression.
     ///
@@ -492,30 +343,19 @@ impl BytePacketBuffer {
     /// # Errors
     ///
     /// Returns an `Err` if there is an issue with writing the domain name, such as exceeding the buffer size.
-    pub fn write_qname(&mut self, qname: &str) -> Result<(),std::io::Error> {
-        for label in qname.split('.') {
+    pub fn write_qname(&mut self, qname: &str) -> Result<(), std::io::Error> {
+        for label in qname.split('.').filter(|l| !l.is_empty()) {
             let len = label.len();
-            if len > 0x3f {
-                return Err(std::io::Error::new(std::io::ErrorKind::UnexpectedEof, "Single label exceeds 63 characters of length"));
+            if len > 0x3F { // DNS labels max length is 63
+                return Err(BytePacketBufferError::InvalidDomainNameFormat.into());
             }
 
-            match self.write_u8(len as u8) {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            };
-            for b in label.as_bytes() {
-                match self.write_u8(*b) {
-                    Ok(s) => s,
-                    Err(e) => return Err(e),
-                }
+            self.write_u8(len as u8)?;
+            for &b in label.as_bytes() {
+                self.write_u8(b)?;
             }
         }
-
-        match self.write_u8(0) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
+        self.write_u8(0)?; // End of QNAME
         Ok(())
     }
 }

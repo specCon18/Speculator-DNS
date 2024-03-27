@@ -395,25 +395,25 @@ impl DNSHeaderSection {
         };
 
         match buffer.write_u8(
-            (self.rd as u8)
-                | ((self.tc as u8) << 1)
-                | ((self.aa as u8) << 2)
-                | (OpCode::to_u8(&self.opcode) << 3)
-                | ((self.qr as u8) << 7) as u8,
-        ) {
+                    (self.rd as u8)
+                    | ((self.tc as u8) << 1) 
+                    | ((self.aa as u8) << 2) 
+                    | (OpCode::to_u8(&self.opcode) << 3) 
+                    | ((self.qr as u8) << 7) as u8
+                ) {
             Ok(s) => s,
-            Err(e) => return Err(e),
+            Err(e) => {eprintln!("{:#?}", e)}
         };
 
         match buffer.write_u8(
             (self.rcode as u8)
-                | ((self.cd as u8) << 4)
-                | ((self.ad as u8) << 5)
-                | ((self.z as u8) << 6)
-                | ((self.ra as u8) << 7),
-        )  {
+            | ((self.cd as u8) << 4)
+            | ((self.ad as u8) << 5)
+            | ((self.z as u8) << 6)
+            | ((self.ra as u8) << 7)
+        ) {
             Ok(s) => s,
-            Err(e) => return Err(e),
+            Err(e) => {eprintln!("{:#?}", e)}
         };
 
         match buffer.write_u16(self.qdcount) {
